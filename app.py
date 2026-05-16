@@ -5,6 +5,7 @@ Main Streamlit application entry point.
 Run with: streamlit run app.py
 """
 
+import html
 import streamlit as st
 import time
 import json
@@ -407,7 +408,7 @@ st.markdown("""
     .stInfo    { border-left: 4px solid #06B6D4; }
     .stWarning { border-left: 4px solid #F59E0B; }
 
-    hr { border-color: var(--text); margin: 20px 0; }
+    hr { border-color: #E2E8F0; margin: 20px 0; }
 
     [data-testid="stExpander"] {
         background: #FFFFFF;
@@ -417,13 +418,45 @@ st.markdown("""
     }
     [data-testid="stExpander"]:hover { border-color: var(--border-hover); }
 
-    .stTextArea textarea {
-        background: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        color: var(--text);
+    .stTextArea textarea,
+    [data-testid="stTextArea"] textarea {
+        background: #F8FAFC !important;
+        border: 1px solid #E2E8F0 !important;
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
         border-radius: 8px;
         font-family: 'DM Sans', sans-serif;
         font-size: 0.875rem;
+        line-height: 1.55;
+        caret-color: #0F172A;
+    }
+    .stTextArea textarea:disabled,
+    [data-testid="stTextArea"] textarea:disabled {
+        background: #F8FAFC !important;
+        color: #0F172A !important;
+        -webkit-text-fill-color: #0F172A !important;
+        opacity: 1 !important;
+        cursor: default;
+    }
+    [data-testid="stTextArea"] label,
+    [data-testid="stTextArea"] [data-baseweb="textarea"] {
+        color: var(--text-muted);
+    }
+
+    .resume-preview {
+        background: #F8FAFC;
+        color: #0F172A;
+        border: 1px solid #E2E8F0;
+        border-radius: 8px;
+        padding: 16px 18px;
+        max-height: 380px;
+        overflow: auto;
+        font-family: 'DM Sans', ui-monospace, monospace;
+        font-size: 0.84rem;
+        line-height: 1.55;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        margin: 0;
     }
 
     .nav-group-label {
@@ -1005,8 +1038,11 @@ def page_upload():
         # Resume text preview
         st.markdown("#### Extracted Resume Content")
         with st.expander("View extracted text", expanded=False):
-            st.text_area("", value=st.session_state.resume_text, height=350,
-                         disabled=True, label_visibility="collapsed")
+            preview = html.escape(st.session_state.resume_text or "")
+            st.markdown(
+                f'<pre class="resume-preview">{preview}</pre>',
+                unsafe_allow_html=True,
+            )
 
         # Analyze button
         st.markdown("---")
