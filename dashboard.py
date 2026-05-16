@@ -13,16 +13,18 @@ from typing import Dict, List, Optional
 
 # ── Color Palette (aligned with app.py theme) ─────────────────────────────────
 COLORS = {
-    "primary": "#14B8A6",      # Teal
-    "secondary": "#06B6D4",    # Cyan
-    "accent": "#8B5CF6",       # Violet accent
+    "primary": "#0D9488",
+    "secondary": "#0891B2",
+    "accent": "#0F766E",
     "success": "#10B981",
     "warning": "#F59E0B",
     "danger": "#EF4444",
     "info": "#3B82F6",
-    "bg_dark": "#0B0F1A",
-    "card_bg": "#131B2E",
-    "text": "#F1F5F9",
+    "bg_dark": "#0F172A",
+    "card_bg": "#FFFFFF",
+    "text": "#0F172A",
+    "text_muted": "#64748B",
+    "grid": "#E2E8F0",
 }
 
 CHART_COLORS = [
@@ -34,23 +36,23 @@ CHART_TEMPLATE = {
     "layout": {
         "paper_bgcolor": "rgba(0,0,0,0)",
         "plot_bgcolor": "rgba(0,0,0,0)",
-        "font": {"color": "#F8FAFC", "family": "Inter, sans-serif"},
-        "xaxis": {"gridcolor": "rgba(255,255,255,0.1)", "linecolor": "rgba(255,255,255,0.2)"},
-        "yaxis": {"gridcolor": "rgba(255,255,255,0.1)", "linecolor": "rgba(255,255,255,0.2)"},
+        "font": {"color": "#0F172A", "family": "DM Sans, sans-serif"},
+        "xaxis": {"gridcolor": "#E2E8F0", "linecolor": "#CBD5E1"},
+        "yaxis": {"gridcolor": "#E2E8F0", "linecolor": "#CBD5E1"},
     }
 }
 
 
-def apply_dark_theme(fig: go.Figure) -> go.Figure:
-    """Apply consistent dark theme to a Plotly figure."""
+def apply_chart_theme(fig: go.Figure) -> go.Figure:
+    """Apply consistent light theme to a Plotly figure."""
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#F8FAFC", family="Inter, sans-serif", size=12),
+        font=dict(color="#0F172A", family="DM Sans, sans-serif", size=12),
         margin=dict(l=20, r=20, t=40, b=20),
     )
-    fig.update_xaxes(gridcolor="rgba(255,255,255,0.08)", linecolor="rgba(255,255,255,0.15)")
-    fig.update_yaxes(gridcolor="rgba(255,255,255,0.08)", linecolor="rgba(255,255,255,0.15)")
+    fig.update_xaxes(gridcolor="#E2E8F0", linecolor="#CBD5E1", tickfont=dict(color="#64748B"))
+    fig.update_yaxes(gridcolor="#E2E8F0", linecolor="#CBD5E1", tickfont=dict(color="#64748B"))
     return fig
 
 
@@ -86,11 +88,11 @@ def create_ats_gauge(score: int, tier: str) -> go.Figure:
             "axis": {
                 "range": [0, 100],
                 "tickwidth": 1,
-                "tickcolor": "rgba(255,255,255,0.3)",
+                "tickcolor": "#94A3B8",
                 "tickfont": {"color": "#94A3B8"},
             },
             "bar": {"color": color, "thickness": 0.7},
-            "bgcolor": "rgba(255,255,255,0.05)",
+            "bgcolor": "#F1F5F9",
             "borderwidth": 0,
             "steps": [
                 {"range": [0, 40], "color": "rgba(239,68,68,0.15)"},
@@ -106,7 +108,7 @@ def create_ats_gauge(score: int, tier: str) -> go.Figure:
         },
         title={
             "text": f"ATS Score<br><span style='font-size:14px;color:{color}'>{tier}</span>",
-            "font": {"size": 18, "color": "#F8FAFC", "family": "Outfit, sans-serif"}
+            "font": {"size": 18, "color": "#0F172A", "family": "Outfit, sans-serif"}
         }
     ))
 
@@ -155,18 +157,18 @@ def create_skill_bar_chart(skill_frequency: Dict[str, int], top_n: int = 15) -> 
         ),
         text=counts,
         textposition='outside',
-        textfont=dict(color="#F8FAFC", size=11),
+        textfont=dict(color="#0F172A", size=11),
         hovertemplate='<b>%{y}</b><br>Mentions: %{x}<extra></extra>'
     ))
 
     fig.update_layout(
-        title=dict(text="Skill Frequency Analysis", font=dict(size=16, color="#F8FAFC", family="Outfit, sans-serif")),
+        title=dict(text="Skill Frequency Analysis", font=dict(size=16, color="#0F172A", family="Outfit, sans-serif")),
         xaxis_title="Frequency in Resume",
         height=max(300, len(skills) * 28),
         showlegend=False,
     )
 
-    return apply_dark_theme(fig)
+    return apply_chart_theme(fig)
 
 
 def create_skill_category_donut(categorized_skills: Dict[str, List[str]]) -> go.Figure:
@@ -206,24 +208,24 @@ def create_skill_category_donut(categorized_skills: Dict[str, List[str]]) -> go.
         hole=0.55,
         marker=dict(
             colors=CHART_COLORS[:len(labels)],
-            line=dict(color="#09090B", width=2)
+            line=dict(color="#FFFFFF", width=2)
         ),
         textinfo='label+percent',
-        textfont=dict(color="#F8FAFC", size=11),
+        textfont=dict(color="#0F172A", size=11),
         hovertemplate='<b>%{label}</b><br>Skills: %{value}<br>(%{percent})<extra></extra>',
     ))
 
     fig.update_layout(
-        title=dict(text="Skills by Category", font=dict(size=16, color="#F8FAFC", family="Outfit, sans-serif")),
+        title=dict(text="Skills by Category", font=dict(size=16, color="#0F172A", family="Outfit, sans-serif")),
         paper_bgcolor="rgba(0,0,0,0)",
         height=320,
         margin=dict(l=10, r=10, t=50, b=10),
-        legend=dict(font=dict(color="#94A3B8")),
+        legend=dict(font=dict(color="#64748B")),
         showlegend=True,
         annotations=[dict(
             text=f"<b>{sum(values)}</b><br>Skills",
             x=0.5, y=0.5,
-            font=dict(size=18, color="#F8FAFC"),
+            font=dict(size=18, color="#0F172A"),
             showarrow=False
         )]
     )
@@ -264,25 +266,25 @@ def create_job_match_chart(recommendations: List[Dict]) -> go.Figure:
         orientation='h',
         marker=dict(
             color=bar_colors,
-            line=dict(color="rgba(255,255,255,0.1)", width=1)
+            line=dict(color="#E2E8F0", width=1)
         ),
         text=[f"{s}%" for s in scores],
         textposition='outside',
-        textfont=dict(color="#F8FAFC", size=12, family="Outfit, sans-serif"),
+        textfont=dict(color="#0F172A", size=12, family="Outfit, sans-serif"),
         hovertemplate='<b>%{y}</b><br>Match: %{x}%<extra></extra>',
     ))
 
-    fig.add_vline(x=70, line_dash="dot", line_color="rgba(255,255,255,0.3)",
-                  annotation_text="70% Threshold", annotation_font_color="#94A3B8")
+    fig.add_vline(x=70, line_dash="dot", line_color="#CBD5E1",
+                  annotation_text="70% Threshold", annotation_font_color="#64748B")
 
     fig.update_layout(
-        title=dict(text="Job Match Scores", font=dict(size=16, color="#F8FAFC", family="Outfit, sans-serif")),
+        title=dict(text="Job Match Scores", font=dict(size=16, color="#0F172A", family="Outfit, sans-serif")),
         xaxis=dict(range=[0, 110], ticksuffix="%"),
         height=max(280, len(roles) * 50),
         showlegend=False,
     )
 
-    return apply_dark_theme(fig)
+    return apply_chart_theme(fig)
 
 
 def create_ats_components_radar(component_scores: Dict[str, float]) -> go.Figure:
@@ -334,20 +336,20 @@ def create_ats_components_radar(component_scores: Dict[str, float]) -> go.Figure
             radialaxis=dict(
                 visible=True,
                 range=[0, 100],
-                tickfont=dict(color="#A1A1AA", size=10),
-                gridcolor="rgba(255,255,255,0.1)",
-                linecolor="rgba(255,255,255,0.15)"
+                tickfont=dict(color="#64748B", size=10),
+                gridcolor="#E2E8F0",
+                linecolor="#CBD5E1"
             ),
             angularaxis=dict(
-                tickfont=dict(color="#F8FAFC", size=10),
-                linecolor="rgba(255,255,255,0.15)",
-                gridcolor="rgba(255,255,255,0.1)"
+                tickfont=dict(color="#0F172A", size=10),
+                linecolor="#CBD5E1",
+                gridcolor="#E2E8F0"
             ),
             bgcolor="rgba(0,0,0,0)"
         ),
         paper_bgcolor="rgba(0,0,0,0)",
-        title=dict(text="ATS Score Breakdown", font=dict(size=16, color="#F8FAFC", family="Outfit, sans-serif")),
-        legend=dict(font=dict(color="#94A3B8")),
+        title=dict(text="ATS Score Breakdown", font=dict(size=16, color="#0F172A", family="Outfit, sans-serif")),
+        legend=dict(font=dict(color="#64748B")),
         height=380,
         margin=dict(l=60, r=60, t=60, b=40),
     )
@@ -385,25 +387,25 @@ def create_role_prediction_chart(prediction_result: Dict) -> go.Figure:
         orientation='h',
         marker=dict(
             color=bar_colors,
-            line=dict(color="rgba(255,255,255,0.05)", width=1)
+            line=dict(color="#E2E8F0", width=1)
         ),
         text=[f"{c:.1f}%" for c in confidences],
         textposition='outside',
-        textfont=dict(color="#F8FAFC", size=11),
+        textfont=dict(color="#0F172A", size=11),
         hovertemplate='<b>%{y}</b><br>Probability: %{x:.1f}%<extra></extra>',
     ))
 
     fig.update_layout(
         title=dict(
             text=f"Role Prediction | {prediction_result.get('model_type', 'N/A').replace('_', ' ').title()}",
-            font=dict(size=15, color="#F8FAFC", family="Outfit, sans-serif")
+            font=dict(size=15, color="#0F172A", family="Outfit, sans-serif")
         ),
         xaxis=dict(range=[0, max(confidences) * 1.3 if confidences else 110], ticksuffix="%"),
         height=max(280, len(roles) * 45),
         showlegend=False,
     )
 
-    return apply_dark_theme(fig)
+    return apply_chart_theme(fig)
 
 
 def create_skill_gap_chart(skill_gap: Dict) -> go.Figure:
@@ -451,14 +453,14 @@ def create_skill_gap_chart(skill_gap: Dict) -> go.Figure:
         barmode='stack',
         title=dict(
             text=f"Skill Gap: {skill_gap.get('target_role', 'Target Role')}",
-            font=dict(size=16, color="#F8FAFC", family="Outfit, sans-serif")
+            font=dict(size=16, color="#0F172A", family="Outfit, sans-serif")
         ),
         legend=dict(font=dict(color="#94A3B8"), bgcolor="rgba(0,0,0,0)"),
         height=300,
         showlegend=True,
     )
 
-    return apply_dark_theme(fig)
+    return apply_chart_theme(fig)
 
 
 def create_ats_progress_bars_data(component_scores: Dict, weights: Dict) -> List[Dict]:

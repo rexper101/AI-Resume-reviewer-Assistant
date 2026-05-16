@@ -392,7 +392,7 @@ st.markdown("""
     }
     .main .stButton > button:not([kind="primary"]):hover {
         background: var(--bg-muted) !important;
-        border-color: #CBD5E1 !important;
+        border-color: var(--text-muted) !important;
     }
 
     .stSelectbox > div > div {
@@ -407,7 +407,7 @@ st.markdown("""
     .stInfo    { border-left: 4px solid #06B6D4; }
     .stWarning { border-left: 4px solid #F59E0B; }
 
-    hr { border-color: #E2E8F0; margin: 20px 0; }
+    hr { border-color: var(--text); margin: 20px 0; }
 
     [data-testid="stExpander"] {
         background: #FFFFFF;
@@ -682,10 +682,8 @@ def render_sidebar():
         st.markdown("""
         <div style='text-align:center; padding: 8px 0 16px;'>
             <div class='brand-logo'>&#128203;</div>
-            <div style='font-family: Outfit, sans-serif; font-size: 1.35rem;
-                        font-weight: 700; color: #F1F5F9;'>ResumeAI</div>
-            <div style='color: #64748B; font-size: 0.7rem; letter-spacing: 0.14em;
-                        text-transform: uppercase; margin-top: 4px;'>Career Intelligence</div>
+            <div class='sidebar-title'>ResumeAI</div>
+            <div class='sidebar-tagline'>Career Intelligence</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -697,9 +695,7 @@ def render_sidebar():
                 label = f"{icon}  {page}"
                 if current == page:
                     st.markdown(
-                        f"<div style='padding:8px 12px;margin:2px 0;border-radius:10px;"
-                        f"background:rgba(20,184,166,0.14);border:1px solid rgba(20,184,166,0.35);"
-                        f"color:#5EEAD4;font-size:0.88rem;font-weight:600;'>{label}</div>",
+                        f"<div class='nav-active'>{label}</div>",
                         unsafe_allow_html=True,
                     )
                 elif st.button(label, key=f"nav_{page}", use_container_width=True):
@@ -714,15 +710,11 @@ def render_sidebar():
             top_match = st.session_state.recommendations[0]["match_percentage"] if st.session_state.recommendations else 0
             st.markdown(f"""
             <div class='glass-card' style='padding:14px;'>
-                <div style='color:#6EE7B7;font-size:0.72rem;font-weight:700;
-                            letter-spacing:0.08em;text-transform:uppercase;'>Analysis ready</div>
+                <div class='status-ready'>Analysis ready</div>
                 <div style='margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;'>
-                    <span style='background:rgba(20,184,166,0.12);color:#5EEAD4;padding:4px 10px;
-                                 border-radius:8px;font-size:0.75rem;'>{skills_count} skills</span>
-                    <span style='background:rgba(20,184,166,0.12);color:#5EEAD4;padding:4px 10px;
-                                 border-radius:8px;font-size:0.75rem;'>ATS {ats_score}</span>
-                    <span style='background:rgba(20,184,166,0.12);color:#5EEAD4;padding:4px 10px;
-                                 border-radius:8px;font-size:0.75rem;'>{top_match}% match</span>
+                    <span class='stat-pill'>{skills_count} skills</span>
+                    <span class='stat-pill'>ATS {ats_score}</span>
+                    <span class='stat-pill'>{top_match}% match</span>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -736,7 +728,7 @@ def render_sidebar():
                 st.rerun()
         else:
             st.markdown("""
-            <div class='glass-card' style='padding:14px;color:#94A3B8;font-size:0.82rem;line-height:1.5;'>
+            <div class='glass-card' style='padding:14px;color:var(--text-muted);font-size:0.82rem;line-height:1.5;'>
                 Upload a resume to unlock ATS scoring, job matches, and interview prep.
             </div>
             """, unsafe_allow_html=True)
@@ -884,7 +876,7 @@ def page_home():
             "Explore ATS, matches, skills, and interview prep",
         ], 1):
             st.markdown(
-                f"<div style='color:#94A3B8;padding:6px 0;'>"
+                f"<div style='color:var(--text-muted);padding:6px 0;'>"
                 f"<span style='color:#14B8A6;font-weight:700;margin-right:8px;'>{i}</span>{step}</div>",
                 unsafe_allow_html=True,
             )
@@ -957,7 +949,7 @@ def page_upload():
             "Add LinkedIn and GitHub profile URLs",
         ]
         for tip in tips:
-            st.markdown(f"<div style='color:#94A3B8; font-size:0.85rem; padding:4px 0;'>- {tip}</div>",
+            st.markdown(f"<div style='color:var(--text-muted); font-size:0.85rem; padding:4px 0;'>- {tip}</div>",
                         unsafe_allow_html=True)
 
     # Process uploaded file
@@ -1050,9 +1042,9 @@ def page_ats_score():
         }
         color = tier_colors.get(ats["tier"], "#6366F1")
         st.markdown(f"""
-        <div style='background: rgba(0,0,0,0.2); border: 1px solid {color}33;
+        <div style='background: var(--bg-muted); border: 1px solid {color}33;
                     border-left: 4px solid {color}; border-radius: 8px; padding: 12px;
-                    color: #CBD5E1; font-size: 0.9rem; line-height: 1.5;'>
+                    color: var(--text-muted); font-size: 0.9rem; line-height: 1.5;'>
             {ats['tier_message']}
         </div>
         """, unsafe_allow_html=True)
@@ -1076,7 +1068,7 @@ def page_ats_score():
             st.markdown(f"""
             <div style='margin-bottom: 16px;'>
                 <div style='display: flex; justify-content: space-between; margin-bottom: 4px;'>
-                    <span style='color: #CBD5E1; font-size: 0.88rem; font-weight: 500;'>
+                    <span style='color: var(--text-muted); font-size: 0.88rem; font-weight: 500;'>
                         {item['label']}
                     </span>
                     <span style='color: {item['color']}; font-size: 0.88rem; font-weight: 600;'>
@@ -1160,8 +1152,8 @@ def page_job_matches():
                     <div style='font-size: 2rem; font-weight: 700; color: {score_color};'>{score}%</div>
                     <div style='color: #64748B; font-size: 0.75rem;'>Match Score</div>
                     <br>
-                    <div style='color: #94A3B8; font-size: 0.82rem;'>{rec['experience_years']}</div>
-                    <div style='color: #94A3B8; font-size: 0.82rem;'>{rec['salary_range']}</div>
+                    <div style='color: var(--text-muted); font-size: 0.82rem;'>{rec['experience_years']}</div>
+                    <div style='color: var(--text-muted); font-size: 0.82rem;'>{rec['salary_range']}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -1240,9 +1232,7 @@ def page_skill_analysis():
         st.markdown("#### Education Info")
         edu = skill_data.get("education_info", {})
         st.markdown(f"""
-        <div style='background: rgba(30,41,59,0.5); border-radius: 12px; padding: 16px; 
-                    border: 1px solid rgba(99,102,241,0.2);'>
-            <div style='color: #94A3B8; font-size: 0.9rem; line-height: 2;'>
+        <div class='info-panel'>
                 Degree: <b>{edu.get('degree', 'Not detected')}</b><br>
                 Field: <b>{edu.get('field', 'Not detected')}</b><br>
                 GPA: <b>{edu.get('gpa', 'Not detected')}</b><br>
@@ -1255,9 +1245,9 @@ def page_skill_analysis():
         st.markdown("#### Experience Info")
         exp = skill_data.get("experience_info", {})
         st.markdown(f"""
-        <div style='background: rgba(30,41,59,0.5); border-radius: 12px; padding: 16px;
-                    border: 1px solid rgba(99,102,241,0.2);'>
-            <div style='color: #94A3B8; font-size: 0.9rem; line-height: 2;'>
+        <div style='background: var(--bg-muted); border-radius: 12px; padding: 16px;
+                    border: 1px solid #E2E8F0;'>
+            <div style='color: var(--text-muted); font-size: 0.9rem; line-height: 2;'>
                 Level: <b>{exp.get('estimated_level', 'Unknown')}</b><br>
                 Years: <b>{exp.get('total_years', 0)} years estimated</b><br>
                 Positions: <b>{len(exp.get('year_ranges', []))} detected</b><br>
@@ -1303,18 +1293,18 @@ def page_skill_gap():
         score_color = "#10B981" if completion >= 75 else "#3B82F6" if completion >= 50 else "#F59E0B"
 
         st.markdown(f"""
-        <div style='background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.08));
-                    border: 1px solid rgba(99,102,241,0.25); border-radius: 16px; padding: 20px;
+        <div style='background: linear-gradient(135deg, #F0FDFA, #ECFEFF);
+                    border: 1px solid #E2E8F0; border-radius: 16px; padding: 20px;
                     margin: 16px 0; display: flex; align-items: center; gap: 20px;'>
             <div style='text-align: center; min-width: 100px;'>
                 <div style='font-size: 2.5rem; font-weight: 700; color: {score_color};'>{completion}%</div>
                 <div style='color: #64748B; font-size: 0.78rem;'>Requirements Met</div>
             </div>
             <div>
-                <div style='font-family: Space Grotesk; font-size: 1.2rem; font-weight: 600; color: #E2E8F0;'>
+                <div style='font-family: Space Grotesk; font-size: 1.2rem; font-weight: 600; color: var(--text);'>
                     {target}
                 </div>
-                <div style='color: #94A3B8; font-size: 0.88rem; margin-top: 4px;'>
+                <div style='color: var(--text-muted); font-size: 0.88rem; margin-top: 4px;'>
                     {gap.get('salary_range', 'N/A')} &nbsp;|&nbsp; {gap.get('experience_required', 'N/A')}
                 </div>
             </div>
@@ -1368,13 +1358,13 @@ def page_role_predictor():
 
     # Prediction hero
     st.markdown(f"""
-    <div style='background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.1));
-                border: 1px solid rgba(99,102,241,0.35); border-radius: 20px; padding: 28px;
+    <div style='background: linear-gradient(135deg, #F0FDFA, #ECFEFF);
+                border: 1px solid #99F6E4; border-radius: 20px; padding: 28px;
                 text-align: center; margin-bottom: 24px;'>
-        <div style='color: #94A3B8; font-size: 0.9rem; text-transform: uppercase; 
+        <div style='color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; 
                     letter-spacing: 0.1em;'>ML Model Prediction</div>
         <div style='font-family: Space Grotesk; font-size: 2.2rem; font-weight: 700;
-                    color: #E2E8F0; margin: 12px 0;'>
+                    color: var(--text); margin: 12px 0;'>
             {pred['predicted_role']}
         </div>
         <div style='display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;'>
@@ -1397,13 +1387,13 @@ def page_role_predictor():
         for rank, (role, prob) in enumerate(pred["top_3_roles"]):
             rank_icon = ["#1", "#2", "#3"][rank]
             bar_width = int(prob * 2) if prob <= 50 else 100
-            color = "#6366F1" if rank == 0 else "#8B5CF6" if rank == 1 else "#A78BFA"
+            color = "#0D9488" if rank == 0 else "#0891B2" if rank == 1 else "#5EEAD4"
             st.markdown(f"""
-            <div style='margin-bottom: 16px; background: rgba(30,41,59,0.5);
+            <div style='margin-bottom: 16px; background: var(--bg-muted);
                         border-radius: 10px; padding: 14px;
-                        border: 1px solid rgba(99,102,241,{0.4 if rank==0 else 0.15});'>
+                        border: 1px solid {"#99F6E4" if rank == 0 else "#E2E8F0"};'>
                 <div style='display: flex; justify-content: space-between;'>
-                    <span style='color: #E2E8F0; font-weight: 500;'>{rank_icon} {role}</span>
+                    <span style='color: var(--text); font-weight: 500;'>{rank_icon} {role}</span>
                     <span style='color: {color}; font-weight: 600;'>{prob:.1f}%</span>
                 </div>
                 <div class='custom-progress-container' style='margin-top: 8px;'>
@@ -1418,7 +1408,7 @@ def page_role_predictor():
 
     features = pred.get("feature_importance", [])
     if features:
-        st.markdown("<p style='color:#94A3B8; font-size:0.88rem;'>These keywords had the highest influence on the ML model's prediction:</p>",
+        st.markdown("<p style='color:var(--text-muted); font-size:0.88rem;'>These keywords had the highest influence on the ML model's prediction:</p>",
                     unsafe_allow_html=True)
 
         cols = st.columns(2)
@@ -1427,17 +1417,17 @@ def page_role_predictor():
                 score_pct = min(100, feat["score"] * 1000)
                 is_skill_badge = "skill" if feat["is_skill"] else "keyword"
                 st.markdown(f"""
-                <div style='background: rgba(30,41,59,0.6); border-radius: 8px; padding: 10px;
-                            border: 1px solid rgba(99,102,241,0.15); margin-bottom: 8px;'>
+                <div style='background: #FFFFFF; border-radius: 8px; padding: 10px;
+                            border: 1px solid #E2E8F0; margin-bottom: 8px;'>
                     <div style='display: flex; justify-content: space-between; align-items: center;'>
-                        <span style='color: #E2E8F0; font-weight: 500; font-size: 0.9rem;'>
+                        <span style='color: var(--text); font-weight: 500; font-size: 0.9rem;'>
                             {feat['feature']}
                         </span>
-                        <span style='color: #6366F1; font-size: 0.75rem;'>{is_skill_badge}</span>
+                        <span style='color: var(--accent); font-size: 0.75rem;'>{is_skill_badge}</span>
                     </div>
                     <div class='custom-progress-container' style='margin-top: 6px;'>
                         <div class='custom-progress-fill' 
-                             style='width: {score_pct:.0f}%; background: linear-gradient(90deg, #6366F188, #6366F1);'>
+                             style='width: {score_pct:.0f}%; background: linear-gradient(90deg, #99F6E4, #0D9488);'>
                         </div>
                     </div>
                 </div>
@@ -1574,7 +1564,7 @@ def page_interview_prep():
         st.markdown(f"""
         <div style='background: rgba(20,184,166,0.08); border: 1px solid rgba(20,184,166,0.20);
                     border-radius: 12px; padding: 14px 20px; margin-top: 12px;
-                    color: #5EEAD4; font-size: 0.9rem; font-weight: 500;'>
+                    color: var(--accent-text); font-size: 0.9rem; font-weight: 500;'>
             Questions practiced: <b>{total_practiced}</b>
         </div>
         """, unsafe_allow_html=True)
