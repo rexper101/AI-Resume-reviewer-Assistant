@@ -753,75 +753,78 @@ def run_full_analysis(resume_text: str, parsed_resume: dict):
 
 
 # ── Page: Home ─────────────────────────────────────────────────────────────────
+
 def page_home():
-    # Hero
     st.markdown("""
     <div class='hero-section'>
-        <div class='hero-title'>AI Resume Screening<br>& Interview Assistant</div>
+        <div class='hero-badge'>AI-powered career toolkit</div>
+        <div class='hero-title'>Screen smarter.<br>Interview better.</div>
         <div class='hero-subtitle'>
-            Upload your resume and get instant AI-powered analysis, ATS scoring,
-            job recommendations, skill gap identification, and personalized interview prep.
+            One upload unlocks ATS scoring, job matches, skill gaps, ML role predictions,
+            and a personalized interview prep pack.
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Feature cards
     features = [
-        ("01", "Resume Parser", "Upload PDF resumes and extract structured content with NLP"),
-        ("02", "ATS Score", "Get your ATS compatibility score across 7 key dimensions"),
-        ("03", "Job Matching", "TF-IDF powered cosine similarity job recommendations"),
-        ("04", "Skill Extraction", "Auto-detect 50+ technical skills using NLP keyword matching"),
-        ("05", "Skill Gap", "Identify missing skills for your target role with learning roadmap"),
-        ("06", "ML Prediction", "Logistic Regression + Random Forest role classification"),
-        ("07", "Interview Prep", "Role-specific + behavioral interview questions database"),
-        ("08", "Analytics", "Interactive Plotly dashboards and skill frequency analysis"),
+        ("01", "\U0001f4c4", "Resume Parser", "Extract structure, sections, and contact info from PDF"),
+        ("02", "\U0001f4ca", "ATS Score", "7 weighted dimensions with actionable feedback"),
+        ("03", "\U0001f4bc", "Job Matching", "TF-IDF + cosine similarity across 8 roles"),
+        ("04", "\U0001f9e0", "Skill Extraction", "50+ skills across six technical categories"),
+        ("05", "\U0001f3af", "Skill Gap", "See what to learn for your target role"),
+        ("06", "\U0001f916", "ML Prediction", "Logistic regression, random forest, naive Bayes"),
+        ("07", "\U0001f3a4", "Interview Prep", "Technical, behavioral, and scenario questions"),
+        ("08", "\U0001f4c8", "Analytics", "Interactive Plotly dashboards in one view"),
     ]
 
     cols = st.columns(4)
-    for i, (icon, title, desc) in enumerate(features):
+    for i, (num, emoji, title, desc) in enumerate(features):
         with cols[i % 4]:
             st.markdown(f"""
-            <div class='metric-card' style='text-align:left; margin-bottom:12px;'>
-                <div style='font-family: Space Grotesk, sans-serif; font-weight: 700; 
-                            color: rgba(99,102,241,0.5); font-size: 1.6rem; margin-bottom:6px;'>{icon}</div>
-                <div style='font-family: Space Grotesk, sans-serif; font-weight: 600; 
-                            color: #E2E8F0; font-size: 1rem;'>{title}</div>
-                <div style='color: #64748B; font-size: 0.8rem; margin-top: 4px; 
-                            line-height: 1.4;'>{desc}</div>
+            <div class='feature-card'>
+                <div class='feature-num'>{num}</div>
+                <div style='font-size:1.25rem;margin-bottom:8px;'>{emoji}</div>
+                <div class='feature-title'>{title}</div>
+                <div class='feature-desc'>{desc}</div>
             </div>
             """, unsafe_allow_html=True)
 
     st.markdown("---")
-
-    # Quick Start
     col1, col2 = st.columns([2, 1])
     with col1:
-        st.markdown("### Quick Start")
-        st.markdown("""
-        <div style='color: #94A3B8; line-height: 1.8;'>
-            <b style='color: #5EEAD4;'>1.</b> Navigate to <b>Upload & Analyze</b> in the sidebar<br>
-            <b style='color: #5EEAD4;'>2.</b> Upload your PDF resume or try the demo<br>
-            <b style='color: #5EEAD4;'>3.</b> Click <b>Run Full Analysis</b> to process<br>
-            <b style='color: #5EEAD4;'>4.</b> Explore results across all dashboard sections
-        </div>
-        """, unsafe_allow_html=True)
-
+        st.markdown("### Quick start")
+        for i, step in enumerate([
+            "Open **Upload & Analyze** in the sidebar",
+            "Upload a PDF or load the sample resume",
+            "Click **Run Full AI Analysis**",
+            "Explore ATS, matches, skills, and interview prep",
+        ], 1):
+            st.markdown(
+                f"<div style='color:#94A3B8;padding:6px 0;'>"
+                f"<span style='color:#14B8A6;font-weight:700;margin-right:8px;'>{i}</span>{step}</div>",
+                unsafe_allow_html=True,
+            )
     with col2:
-        st.markdown("### Tech Stack")
-        stack_items = ["Python 3.10+", "Streamlit", "scikit-learn", "spaCy/NLTK", "Plotly", "PyPDF2"]
-        for item in stack_items:
+        st.markdown("### Built with")
+        for item in ["Python 3.10+", "Streamlit", "scikit-learn", "Plotly", "PyPDF2"]:
             st.markdown(f"<span class='skill-tag'>{item}</span>", unsafe_allow_html=True)
 
-    # CTA Button
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("Get Started - Upload Resume", use_container_width=False):
-        st.session_state.current_page = "Upload & Analyze"
-        st.rerun()
+    cta1, cta2, _ = st.columns([1, 1, 2])
+    with cta1:
+        if st.button("Upload resume", type="primary", use_container_width=True):
+            st.session_state.current_page = "Upload & Analyze"
+            st.rerun()
+    with cta2:
+        if st.session_state.analysis_done and st.button("View dashboard", use_container_width=True):
+            st.session_state.current_page = "Analytics Dashboard"
+            st.rerun()
+
 
 
 # ── Page: Upload & Analyze ─────────────────────────────────────────────────────
 def page_upload():
-    st.markdown("<div class='section-header'>Resume Upload & Analysis</div>", unsafe_allow_html=True)
+    render_page_header("Upload & Analyze")
 
     col1, col2 = st.columns([3, 2])
 
@@ -938,20 +941,13 @@ def page_upload():
                 st.balloons()
 
     else:
-        st.markdown("""
-        <div style='text-align:center; padding:50px; color:#475569;'>
-            <div style='font-size:1.5rem; margin-bottom:16px; color:#475569;'>---</div>
-            <div style='font-size:1.1rem;'>Upload a PDF resume or load the sample to begin</div>
-        </div>
-        """, unsafe_allow_html=True)
+        render_empty_state("\U0001f4c4", "No resume yet", "Upload a PDF or load the sample resume to get started.")
 
 
 # ── Page: ATS Score ────────────────────────────────────────────────────────────
 def page_ats_score():
-    st.markdown("<div class='section-header'>ATS Score Analysis</div>", unsafe_allow_html=True)
-
-    if not st.session_state.ats_result:
-        st.warning("Please upload and analyze a resume first.")
+    render_page_header("ATS Score")
+    if not require_analysis("ATS Score"):
         return
 
     ats = st.session_state.ats_result
@@ -1035,10 +1031,8 @@ def page_ats_score():
 
 # ── Page: Job Matches ──────────────────────────────────────────────────────────
 def page_job_matches():
-    st.markdown("<div class='section-header'>Job Recommendations</div>", unsafe_allow_html=True)
-
-    if not st.session_state.recommendations:
-        st.warning("Please upload and analyze a resume first.")
+    render_page_header("Job Matches")
+    if not require_analysis("Job Matches"):
         return
 
     recs = st.session_state.recommendations
@@ -1094,10 +1088,8 @@ def page_job_matches():
 
 # ── Page: Skill Analysis ───────────────────────────────────────────────────────
 def page_skill_analysis():
-    st.markdown("<div class='section-header'>Skill Analysis</div>", unsafe_allow_html=True)
-
-    if not st.session_state.skill_data:
-        st.warning("Please upload and analyze a resume first.")
+    render_page_header("Skill Analysis")
+    if not require_analysis("Skill Analysis"):
         return
 
     skill_data = st.session_state.skill_data
@@ -1192,10 +1184,8 @@ def page_skill_analysis():
 
 # ── Page: Skill Gap ────────────────────────────────────────────────────────────
 def page_skill_gap():
-    st.markdown("<div class='section-header'>Skill Gap Analysis</div>", unsafe_allow_html=True)
-
-    if not st.session_state.recommendations:
-        st.warning("Please upload and analyze a resume first.")
+    render_page_header("Skill Gap")
+    if not require_analysis("Skill Gap"):
         return
 
     from datasets.job_descriptions import JOB_ROLES
@@ -1286,10 +1276,8 @@ def page_skill_gap():
 
 # ── Page: Role Predictor ───────────────────────────────────────────────────────
 def page_role_predictor():
-    st.markdown("<div class='section-header'>ML Role Predictor</div>", unsafe_allow_html=True)
-
-    if not st.session_state.prediction_result:
-        st.warning("Please upload and analyze a resume first.")
+    render_page_header("Role Predictor")
+    if not require_analysis("Role Predictor"):
         return
 
     pred = st.session_state.prediction_result
@@ -1397,10 +1385,8 @@ def page_role_predictor():
 
 # ── Page: Interview Prep ───────────────────────────────────────────────────────
 def page_interview_prep():
-    st.markdown("<div class='section-header'>Interview Preparation</div>", unsafe_allow_html=True)
-
-    if not st.session_state.interview_pack:
-        st.warning("Please upload and analyze a resume first.")
+    render_page_header("Interview Prep")
+    if not require_analysis("Interview Prep"):
         return
 
     pack = st.session_state.interview_pack
@@ -1523,10 +1509,8 @@ def page_interview_prep():
 
 # ── Page: Analytics Dashboard ──────────────────────────────────────────────────
 def page_analytics_dashboard():
-    st.markdown("<div class='section-header'>Analytics Dashboard</div>", unsafe_allow_html=True)
-
-    if not st.session_state.analysis_done:
-        st.warning("Please upload and analyze a resume first.")
+    render_page_header("Analytics Dashboard")
+    if not require_analysis("the analytics dashboard"):
         return
 
     ats = st.session_state.ats_result or {}

@@ -142,7 +142,7 @@ def create_skill_bar_chart(skill_frequency: Dict[str, int], top_n: int = 15) -> 
     # Color gradient based on frequency
     max_count = max(counts) if counts else 1
     colors = [
-        f"rgba(139,92,246,{0.4 + 0.6*(c/max_count)})" for c in counts
+        f"rgba(20,184,166,{0.4 + 0.6*(c/max_count)})" for c in counts
     ]
 
     fig = go.Figure(go.Bar(
@@ -151,7 +151,7 @@ def create_skill_bar_chart(skill_frequency: Dict[str, int], top_n: int = 15) -> 
         orientation='h',
         marker=dict(
             color=colors,
-            line=dict(color="rgba(139,92,246,0.8)", width=1)
+            line=dict(color="rgba(20,184,166,0.8)", width=1)
         ),
         text=counts,
         textposition='outside',
@@ -312,8 +312,8 @@ def create_ats_components_radar(component_scores: Dict[str, float]) -> go.Figure
         r=values_closed,
         theta=labels_closed,
         fill='toself',
-        fillcolor="rgba(139,92,246,0.2)",
-        line=dict(color="#8B5CF6", width=2),
+        fillcolor="rgba(20,184,166,0.2)",
+        line=dict(color="#14B8A6", width=2),
         name="Your Resume",
         hovertemplate='<b>%{theta}</b><br>Score: %{r:.0f}/100<extra></extra>'
     ))
@@ -375,7 +375,7 @@ def create_role_prediction_chart(prediction_result: Dict) -> go.Figure:
     # Highlight predicted role
     predicted = prediction_result["predicted_role"]
     bar_colors = [
-        "#8B5CF6" if role == predicted else "rgba(139,92,246,0.35)"
+        "#14B8A6" if role == predicted else "rgba(20,184,166,0.35)"
         for role in roles
     ]
 
