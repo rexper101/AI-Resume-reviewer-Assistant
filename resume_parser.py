@@ -309,3 +309,20 @@ Visualization: Matplotlib, Seaborn, Plotly, Tableau, Power BI
 Cloud/DevOps: AWS (EC2, S3, SageMaker, Lambda), Docker, Kubernetes, CI/CD, Git
 Databases: PostgreSQL, MySQL, MongoDB, Redis, Elasticsearch
 
+PROJECTS
+
+Real-time Fraud Detection System
+- Built ML pipeline detecting fraudulent transactions in real-time using Random Forest and XGBoost
+- Achieved 99.2% precision and deployed on AWS using Docker and FastAPI
+- Technologies: Python, Scikit-learn, AWS, Docker, Redis
+
+Customer Segmentation Engine
+- Developed K-Means and DBSCAN clustering models for customer behavior analysis
+- Built interactive Streamlit dashboard for business stakeholders
+- Technologies: Python, Pandas, Plotly, Streamlit, PostgreSQL
+
+CERTIFICATIONS
+- AWS Certified Machine Learning Specialty (2023)
+- Google Professional Data Engineer (2022)
+- TensorFlow Developer Certificate (2021)
+"""
