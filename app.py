@@ -11,7 +11,17 @@ import time
 import json
 from pathlib import Path
 
-
+# ── Page Configuration ─────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="ResumeAI — Smart Resume Analysis",
+    page_icon="📋",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        "Get Help": "https://github.com/yourusername/ai-resume-screener",
+        "About": "ResumeAI — AI Resume Screening & Interview Assistant v1.0"
+    }
+)
 
 # ── Custom CSS Styling (light theme) ───────────────────────────────────────────
 st.markdown("""
