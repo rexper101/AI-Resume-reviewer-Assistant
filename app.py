@@ -1544,7 +1544,3 @@ def main():
         page_interview_prep()
     elif page == "Analytics Dashboard":
         page_analytics_dashboard()
-
-
-if __name__ == "__main__":
-    main()
