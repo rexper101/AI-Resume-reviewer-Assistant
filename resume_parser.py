@@ -220,3 +220,109 @@ def calculate_resume_stats(text: str) -> dict:
         "has_projects": "projects" in sections and len(sections.get("projects", "")) > 20,
         "has_certifications": "certifications" in sections and len(sections.get("certifications", "")) > 10,
     }
+
+    return {
+        "word_count": len(words),
+        "char_count": len(text),
+        "estimated_pages": estimated_pages,
+        "sections_detected": [k for k, v in has_sections.items() if v],
+        **has_sections
+    }
+
+
+def parse_resume(file) -> dict:
+    """
+    Main function to parse a resume file and return structured data.
+
+    Args:
+        file: Uploaded file object from Streamlit
+
+    Returns:
+        Dict containing all parsed resume data
+    """
+    # Extract raw text
+    raw_text = extract_text_from_pdf(file)
+
+    if not raw_text.strip():
+        raise ValueError("No text could be extracted from the PDF. The file may be scanned or image-based.")
+
+    # Clean the text
+    cleaned_text = clean_resume_text(raw_text)
+
+    # Extract structured data
+    sections = detect_sections(cleaned_text)
+    contact_info = extract_contact_info(cleaned_text)
+    stats = calculate_resume_stats(cleaned_text)
+
+    return {
+        "raw_text": raw_text,
+        "cleaned_text": cleaned_text,
+        "sections": sections,
+        "contact_info": contact_info,
+        "stats": stats
+    }
+
+
+def get_sample_resume_text() -> str:
+    """
+    Returns a sample resume text for demo purposes when no file is uploaded.
+    """
+    return """
+John Smith
+john.smith@email.com | +1-555-0123 | linkedin.com/in/johnsmith | github.com/johnsmith
+San Francisco, CA
+
+PROFESSIONAL SUMMARY
+Passionate Data Scientist with 3+ years of experience building machine learning models and
+data pipelines. Expertise in Python, SQL, and cloud technologies. Proven track record of
+delivering end-to-end ML solutions from data collection to production deployment.
+
+WORK EXPERIENCE
+
+Senior Data Scientist | TechCorp Inc. | 2022 - Present
+- Built and deployed machine learning models for customer churn prediction (92% accuracy)
+- Developed NLP pipeline for sentiment analysis using BERT and TensorFlow
+- Reduced data processing time by 60% using Apache Spark and AWS EMR
+- Mentored junior data scientists and conducted code reviews
+
+Data Scientist | DataStartup | 2021 - 2022
+- Created recommendation system using collaborative filtering and matrix factorization
+- Built automated ETL pipelines using Apache Airflow and Python
+- Performed A/B testing and statistical analysis for product experiments
+- Developed dashboards using Tableau and Power BI for business stakeholders
+
+Data Analyst Intern | Analytics Co. | 2020 - 2021
+- Analyzed large datasets using SQL and Python (Pandas, NumPy)
+- Created data visualizations using Matplotlib, Seaborn, and Plotly
+- Built automated reporting pipelines using Python scripts
+
+EDUCATION
+Bachelor of Science in Computer Science | Stanford University | 2020
+- GPA: 3.8/4.0
+- Relevant Coursework: Machine Learning, Statistics, Algorithms, Database Systems
+
+TECHNICAL SKILLS
+Programming: Python, SQL, R, Scala, Bash
+ML/AI: Machine Learning, Deep Learning, NLP, Computer Vision, TensorFlow, PyTorch, Scikit-learn
+Data: Pandas, NumPy, Spark, Hadoop, Kafka, ETL
+Visualization: Matplotlib, Seaborn, Plotly, Tableau, Power BI
+Cloud/DevOps: AWS (EC2, S3, SageMaker, Lambda), Docker, Kubernetes, CI/CD, Git
+Databases: PostgreSQL, MySQL, MongoDB, Redis, Elasticsearch
+
+PROJECTS
+
+Real-time Fraud Detection System
+- Built ML pipeline detecting fraudulent transactions in real-time using Random Forest and XGBoost
+- Achieved 99.2% precision and deployed on AWS using Docker and FastAPI
+- Technologies: Python, Scikit-learn, AWS, Docker, Redis
+
+Customer Segmentation Engine
+- Developed K-Means and DBSCAN clustering models for customer behavior analysis
+- Built interactive Streamlit dashboard for business stakeholders
+- Technologies: Python, Pandas, Plotly, Streamlit, PostgreSQL
+
+CERTIFICATIONS
+- AWS Certified Machine Learning Specialty (2023)
+- Google Professional Data Engineer (2022)
+- TensorFlow Developer Certificate (2021)
+"""
