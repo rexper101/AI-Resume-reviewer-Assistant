@@ -80,3 +80,10 @@ t = t.replace(
     '"xaxis": {"gridcolor": "rgba(255,255,255,0.1)", "linecolor": "rgba(255,255,255,0.2)"}',
     '"xaxis": {"gridcolor": "#E2E8F0", "linecolor": "#CBD5E1"}',
 )
+t = t.replace(
+    '"yaxis": {"gridcolor": "rgba(255,255,255,0.1)", "linecolor": "rgba(255,255,255,0.2)"}',
+    '"yaxis": {"gridcolor": "#E2E8F0", "linecolor": "#CBD5E1"}',
+)
+
+p.write_text(t, encoding="utf-8")
+print("dashboard done")
