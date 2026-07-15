@@ -486,19 +486,4 @@ def create_ats_progress_bars_data(component_scores: Dict, weights: Dict) -> List
         "additional_sections": "Additional Sections",
     }
 
-    for component, score in component_scores.items():
-        weight = weights.get(component, 0)
-        progress_data.append({
-            "label": label_map.get(component, component.replace("_", " ").title()),
-            "score": score,
-            "weight": weight,
-            "weighted_contribution": round(score / 100 * weight, 1),
-            "color": (
-                "#10B981" if score >= 80 else
-                "#3B82F6" if score >= 60 else
-                "#F59E0B" if score >= 40 else
-                "#EF4444"
-            )
-        })
-
-    return progress_data
+   
