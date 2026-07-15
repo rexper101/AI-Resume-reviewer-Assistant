@@ -1540,4 +1540,11 @@ def main():
         page_skill_gap()
     elif page == "Role Predictor":
         page_role_predictor()
- 
+    elif page == "Interview Prep":
+        page_interview_prep()
+    elif page == "Analytics Dashboard":
+        page_analytics_dashboard()
+
+
+if __name__ == "__main__":
+    main()
