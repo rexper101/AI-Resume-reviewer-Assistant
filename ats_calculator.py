@@ -459,3 +459,28 @@ def calculate_ats_score(
     }
 
 
+def get_improvement_priority(ats_result: Dict) -> List[Dict]:
+    """
+    Prioritize improvements based on their potential score impact.
+
+    Args:
+        ats_result: ATS score result dict
+
+    Returns:
+        Sorted list of improvement opportunities
+    """
+    improvements = []
+
+    for component, score in ats_result["component_scores"].items():
+        if score < 80:  # Room for improvement
+            weight = SCORING_WEIGHTS[component]
+            potential_gain = round((80 - score) / 100 * weight, 1)
+            improvements.append({
+                "component": component.replace("_", " ").title(),
+                "current_score": score,
+                "weight": weight,
+                "potential_gain": potential_gain,
+                "priority": "High" if weight >= 20 else ("Medium" if weight >= 10 else "Low")
+            })
+
+    return sorted(improvements, key=lambda x: x["potential_gain"], reverse=True)
