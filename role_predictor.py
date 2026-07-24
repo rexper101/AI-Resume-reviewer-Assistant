@@ -25,7 +25,25 @@ from datasets.job_descriptions import JOB_ROLES
 
 # ── Synthetic training data generation ────────────────────────────────────────
 TRAINING_TEMPLATES = {
-    
+    "Data Scientist": [
+        "python machine learning deep learning tensorflow scikit-learn pandas numpy statistics data visualization NLP AWS spark feature engineering data science",
+        "data science machine learning python SQL statistics R tensorflow keras scikit-learn jupyter pandas data analysis predictive modeling",
+        "python tensorflow pytorch deep learning neural networks NLP transformers BERT data preprocessing feature engineering model deployment AWS",
+        "machine learning python statistics scikit-learn pandas numpy matplotlib seaborn plotly data visualization SQL postgres jupyter",
+        "data scientist python R machine learning statistical analysis hypothesis testing A/B testing feature engineering random forest XGBoost",
+        "deep learning computer vision NLP transformer models pytorch tensorflow python docker kubernetes AWS model deployment MLOps",
+        "python machine learning scikit-learn TF-IDF recommendation system collaborative filtering content-based filtering pandas SQL",
+        "data science python pandas scikit-learn matplotlib power bi tableau SQL statistical modeling regression classification clustering",
+    ],
+    "Data Analyst": [
+        "SQL Excel Tableau Power BI python pandas data analysis business intelligence reporting ETL data cleaning postgresql",
+        "SQL data analysis Excel Tableau Power BI reporting business intelligence KPI metrics dashboards data visualization MySQL",
+        "excel SQL Tableau data analysis business intelligence reporting stakeholder management data cleaning ETL data modeling",
+        "python pandas SQL data analysis visualization matplotlib seaborn plotly Excel Power BI reporting business analysis",
+        "SQL MySQL PostgreSQL data analysis reporting Excel Power BI Tableau looker business intelligence data warehouse ETL",
+        "data analyst SQL Excel Python business intelligence reporting metrics KPI dashboard Tableau Looker data visualization",
+        "SQL python data analysis Power BI Excel reporting stakeholder communication business analytics data modeling statistics",
+    ],
     "ML Engineer": [
         "python machine learning MLOps docker kubernetes AWS FastAPI model deployment scikit-learn tensorflow CI/CD REST API",
         "MLOps docker kubernetes AWS machine learning model serving FastAPI python TensorFlow PyTorch CI/CD GitHub Actions",
