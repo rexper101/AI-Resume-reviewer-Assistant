@@ -97,7 +97,8 @@ TRAINING_TEMPLATES = {
     "AWS cloud DevOps EC2 Lambda ECS EKS CloudFormation terraform docker kubernetes CI/CD monitoring logging security IAM",
     "DevOps automation docker kubernetes Jenkins GitHub Actions terraform ansible linux python shell scripting cloud deployment",
     "CI/CD pipelines docker kubernetes GitHub Actions Jenkins AWS terraform ansible monitoring prometheus grafana logging ELK"
-],
+    ],
+}
 
 class RolePredictor:
     """
