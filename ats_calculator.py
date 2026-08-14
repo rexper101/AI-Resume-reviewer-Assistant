@@ -5,18 +5,16 @@ Evaluates resume compatibility with ATS systems based on multiple factors.
 
 import re
 from typing import Dict, List, Tuple
+import sys
+import os
+sys.path.insert(0, os.path.dirname(__file__))
+import config
 
 
-# ATS scoring weights (must sum to 100)
-SCORING_WEIGHTS = {
-    "keyword_optimization": 25,    # Right keywords for the role
-    "skills_relevance": 20,        # Technical skills match
-    "structure_quality": 20,       # Resume structure/formatting
-    "experience_section": 15,      # Quality of experience descriptions
-    "education_section": 10,       # Education information completeness
-    "contact_completeness": 5,     # Contact info present
-    "additional_sections": 5,      # Projects, certs, etc.
-}
+# Precompile patterns for efficiency
+_QUANTIFIED_PATTERN_COMPILED = config.QUANTIFIED_PATTERN
+_DATE_PATTERN_COMPILED = config.DATE_PATTERN
+_COMPANY_PATTERN_COMPILED = config.COMPANY_PATTERN
 
 
 def score_keyword_optimization(text: str, extracted_skills: List[str]) -> Tuple[float, List[str]]:
@@ -35,19 +33,12 @@ def score_keyword_optimization(text: str, extracted_skills: List[str]) -> Tuple[
 
     text_lower = text.lower()
 
-    # Check for important ATS keywords
-    ats_keywords = [
-        "experience", "skills", "education", "projects", "achievements",
-        "responsibilities", "accomplished", "developed", "implemented",
-        "managed", "led", "created", "designed", "optimized", "improved",
-        "collaborated", "delivered", "built", "deployed"
-    ]
-
-    found_keywords = [k for k in ats_keywords if k in text_lower]
-    keyword_ratio = len(found_keywords) / len(ats_keywords)
+    # Check for important ATS keywords from config
+    found_keywords = [k for k in config.ATS_KEYWORDS if k in text_lower]
+    keyword_ratio = len(found_keywords) / len(config.ATS_KEYWORDS)
     score += keyword_ratio * 40
 
-    # Action verbs score
+    # Action verbs score from config
     action_verbs = [
         "built", "developed", "designed", "implemented", "optimized",
         "improved", "increased", "reduced", "led", "managed", "created",
