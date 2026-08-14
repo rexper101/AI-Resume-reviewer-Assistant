@@ -4,6 +4,7 @@ Compares resume skills against job descriptions to find best role matches.
 """
 
 import re
+import logging
 import numpy as np
 from typing import List, Dict, Tuple
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -13,6 +14,9 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(__file__))
 from datasets.job_descriptions import JOB_ROLES
+import config
+
+logger = logging.getLogger(__name__)
 
 
 def build_skill_text(skills: List[str]) -> str:

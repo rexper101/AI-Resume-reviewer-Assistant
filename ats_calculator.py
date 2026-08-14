@@ -39,17 +39,12 @@ def score_keyword_optimization(text: str, extracted_skills: List[str]) -> Tuple[
     score += keyword_ratio * 40
 
     # Action verbs score from config
-    action_verbs = [
-        "built", "developed", "designed", "implemented", "optimized",
-        "improved", "increased", "reduced", "led", "managed", "created",
-        "deployed", "architected", "delivered", "automated", "accelerated"
-    ]
-    found_verbs = [v for v in action_verbs if v in text_lower]
+    found_verbs = [v for v in config.ACTION_VERBS if v in text_lower]
     verb_ratio = min(1.0, len(found_verbs) / 8)
     score += verb_ratio * 30
 
-    # Quantified achievements (numbers/percentages)
-    quantified = re.findall(r'\d+[\%\+xX]|\d+\s*(million|billion|thousand|k\b)', text_lower)
+    # Quantified achievements (numbers/percentages) using precompiled pattern
+    quantified = _QUANTIFIED_PATTERN_COMPILED.findall(text_lower)
     if len(quantified) >= 5:
         score += 30
         feedback.append("✅ Good use of quantified achievements")
@@ -180,9 +175,8 @@ def score_experience_section(text: str, sections: Dict) -> Tuple[float, List[str
 
     exp_text = sections.get("experience", text)
 
-    # Check for date ranges
-    date_pattern = r'(20\d{2})\s*[-–]\s*(20\d{2}|present|current)'
-    dates = re.findall(date_pattern, exp_text, re.IGNORECASE)
+    # Check for date ranges using precompiled pattern
+    dates = _DATE_PATTERN_COMPILED.findall(exp_text)
 
     if len(dates) >= 2:
         score += 25
@@ -193,9 +187,8 @@ def score_experience_section(text: str, sections: Dict) -> Tuple[float, List[str
     else:
         feedback.append("❌ Add employment dates to all positions")
 
-    # Check for company names (Title Case words)
-    company_pattern = r'[A-Z][a-z]+(?:\s[A-Z][a-z]+)*(?:\s(?:Inc|LLC|Ltd|Corp|Co|Technologies|Solutions|Group)\.?)?'
-    companies = re.findall(company_pattern, exp_text)
+    # Check for company names using precompiled pattern
+    companies = _COMPANY_PATTERN_COMPILED.findall(exp_text)
     if len(companies) >= 2:
         score += 20
         feedback.append("✅ Multiple work experiences detected")
