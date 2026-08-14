@@ -5,23 +5,35 @@ Supports PDF files with fallback error handling.
 
 import re
 import io
+import logging
 from typing import Optional
+
+# Import config
+import sys
+import os
+sys.path.insert(0, os.path.dirname(__file__))
+import config
+
+logger = logging.getLogger(__name__)
 
 
 def extract_text_from_pdf(file) -> str:
     """
     Extract raw text from a PDF file object.
-    Tries pdfplumber first (better layout handling), falls back to PyPDF2.
+    Tries multiple PDF libraries in order for robustness.
 
     Args:
         file: File-like object (from Streamlit uploader)
 
     Returns:
         Extracted text string
+        
+    Raises:
+        ValueError: If no text could be extracted from any library
     """
     text = ""
-
-    # Try pdfplumber first (handles complex layouts better)
+    
+    # Try pdfplumber first (better layout handling)
     try:
         import pdfplumber
         with pdfplumber.open(file) as pdf:
@@ -30,12 +42,13 @@ def extract_text_from_pdf(file) -> str:
                 if page_text:
                     text += page_text + "\n"
         if text.strip():
+            logger.info("Successfully extracted text using pdfplumber")
             return text
     except ImportError:
-        pass
-    except Exception:
-        pass
-
+        logger.debug("pdfplumber not installed, trying next library")
+    except Exception as e:
+        logger.warning(f"pdfplumber extraction failed: {e}")
+    
     # Fallback to PyPDF2
     try:
         import PyPDF2
@@ -47,13 +60,14 @@ def extract_text_from_pdf(file) -> str:
             if page_text:
                 text += page_text + "\n"
         if text.strip():
+            logger.info("Successfully extracted text using PyPDF2")
             return text
     except ImportError:
-        pass
-    except Exception:
-        pass
-
-    # Last fallback: try pypdf
+        logger.debug("PyPDF2 not installed, trying next library")
+    except Exception as e:
+        logger.warning(f"PyPDF2 extraction failed: {e}")
+    
+    # Final fallback: try pypdf
     try:
         from pypdf import PdfReader
         if hasattr(file, 'seek'):
@@ -63,15 +77,23 @@ def extract_text_from_pdf(file) -> str:
             page_text = page.extract_text()
             if page_text:
                 text += page_text + "\n"
+        if text.strip():
+            logger.info("Successfully extracted text using pypdf")
+            return text
+    except ImportError:
+        logger.debug("pypdf not installed")
     except Exception as e:
-        raise ValueError(f"Could not extract text from PDF: {str(e)}")
-
-    return text
+        logger.warning(f"pypdf extraction failed: {e}")
+    
+    # All methods failed
+    error_msg = "Could not extract text from PDF using any available library"
+    logger.error(error_msg)
+    raise ValueError(error_msg)
 
 
 def clean_resume_text(text: str) -> str:
     """
-    Clean and normalize extracted resume text.
+    Clean and normalize extracted resume text using precompiled patterns.
 
     Args:
         text: Raw extracted text
@@ -80,21 +102,21 @@ def clean_resume_text(text: str) -> str:
         Cleaned text
     """
     # Remove excessive whitespace
-    text = re.sub(r'\n{3,}', '\n\n', text)
-    text = re.sub(r' {2,}', ' ', text)
+    text = config.WHITESPACE_PATTERN.sub('\n\n', text)
+    text = config.MULTI_SPACE_PATTERN.sub(' ', text)
 
     # Remove non-printable characters
-    text = re.sub(r'[^\x20-\x7E\n]', ' ', text)
+    text = config.NON_PRINTABLE_PATTERN.sub(' ', text)
 
     # Fix common PDF extraction artifacts
-    text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)  # camelCase splits
+    text = config.CAMELCASE_PATTERN.sub(r'\1 \2', text)
 
     return text.strip()
 
 
 def detect_sections(text: str) -> dict:
     """
-    Detect key sections in a resume using regex pattern matching.
+    Detect key sections in a resume using precompiled regex patterns.
 
     Args:
         text: Cleaned resume text
@@ -103,18 +125,6 @@ def detect_sections(text: str) -> dict:
         Dict of detected section names and their content
     """
     sections = {}
-
-    # Common section headers (case-insensitive)
-    section_patterns = {
-        "contact": r"(contact|personal\s+info|contact\s+information)",
-        "summary": r"(summary|objective|profile|about\s+me|professional\s+summary)",
-        "experience": r"(experience|work\s+experience|employment|work\s+history|professional\s+experience)",
-        "education": r"(education|academic|qualification|degrees?)",
-        "skills": r"(skills|technical\s+skills|core\s+competencies|technologies|expertise)",
-        "projects": r"(projects|personal\s+projects|key\s+projects|portfolio)",
-        "certifications": r"(certifications?|certificates?|credentials|licenses?|achievements?)",
-        "languages": r"(languages?)",
-    }
 
     lines = text.split('\n')
     current_section = "header"
@@ -125,13 +135,14 @@ def detect_sections(text: str) -> dict:
         if not line_stripped:
             continue
 
-        # Check if line is a section header
+        # Check if line is a section header using precompiled patterns
         found_section = False
-        for section_name, pattern in section_patterns.items():
+        for section_name, pattern in config.SECTION_PATTERNS.items():
             if re.match(r'^' + pattern + r'[\s:]*$', line_stripped, re.IGNORECASE):
                 current_section = section_name
                 sections[current_section] = []
                 found_section = True
+                logger.debug(f"Detected section: {section_name}")
                 break
 
         if not found_section:
@@ -143,13 +154,13 @@ def detect_sections(text: str) -> dict:
 
 def extract_contact_info(text: str) -> dict:
     """
-    Extract contact information from resume text.
+    Extract contact information from resume text using precompiled patterns.
 
     Args:
         text: Resume text
 
     Returns:
-        Dict with name, email, phone, linkedin, github
+        Dict with email, phone, linkedin, github, location
     """
     contact = {
         "email": None,
@@ -160,32 +171,27 @@ def extract_contact_info(text: str) -> dict:
     }
 
     # Email
-    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-    email_match = re.search(email_pattern, text)
+    email_match = re.search(config.CONTACT_PATTERNS["email"], text)
     if email_match:
         contact["email"] = email_match.group()
 
     # Phone
-    phone_pattern = r'(\+?[\d\s\-\(\)]{10,15})'
-    phone_match = re.search(phone_pattern, text)
+    phone_match = re.search(config.CONTACT_PATTERNS["phone"], text)
     if phone_match:
         contact["phone"] = phone_match.group().strip()
 
     # LinkedIn
-    linkedin_pattern = r'linkedin\.com/in/[\w\-]+'
-    linkedin_match = re.search(linkedin_pattern, text, re.IGNORECASE)
+    linkedin_match = re.search(config.CONTACT_PATTERNS["linkedin"], text, re.IGNORECASE)
     if linkedin_match:
         contact["linkedin"] = linkedin_match.group()
 
     # GitHub
-    github_pattern = r'github\.com/[\w\-]+'
-    github_match = re.search(github_pattern, text, re.IGNORECASE)
+    github_match = re.search(config.CONTACT_PATTERNS["github"], text, re.IGNORECASE)
     if github_match:
         contact["github"] = github_match.group()
 
-    # Location (city, state/country)
-    location_pattern = r'\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*,\s*(?:[A-Z]{2}|[A-Z][a-z]+))\b'
-    location_match = re.search(location_pattern, text)
+    # Location
+    location_match = re.search(config.CONTACT_PATTERNS["location"], text)
     if location_match:
         contact["location"] = location_match.group()
 
@@ -205,8 +211,8 @@ def calculate_resume_stats(text: str) -> dict:
     words = text.split()
     sections = detect_sections(text)
 
-    # Estimate pages (average 400 words per page for resumes)
-    estimated_pages = max(1, round(len(words) / 400, 1))
+    # Estimate pages (average words per page from config)
+    estimated_pages = max(1, round(len(words) / config.WORDS_PER_PAGE, 1))
 
     # Count years of experience from text
     year_matches = re.findall(r'\b(19|20)(\d{2})\b', text)
