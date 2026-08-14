@@ -24,6 +24,10 @@ ALL_SKILLS = list(set(ALL_SKILLS))
 MULTI_WORD_SKILLS = [s for s in ALL_SKILLS if ' ' in s]
 SINGLE_WORD_SKILLS = [s for s in ALL_SKILLS if ' ' not in s]
 
+# Precompile skill patterns for efficiency
+MULTI_WORD_PATTERNS = [re.compile(r'\b' + re.escape(skill) + r'\b') for skill in MULTI_WORD_SKILLS]
+SINGLE_WORD_PATTERNS = [re.compile(r'\b' + re.escape(skill) + r'\b') for skill in SINGLE_WORD_SKILLS]
+
 # Additional skill aliases / synonyms
 SKILL_ALIASES = {
     "ml": "machine learning",
@@ -68,6 +72,9 @@ SKILL_ALIASES = {
     "jenkins": "ci/cd",
 }
 
+# Precompile alias patterns
+_ALIAS_PATTERNS = {alias: re.compile(r'\b' + re.escape(alias) + r'\b') for alias in SKILL_ALIASES.keys()}
+
 
 def preprocess_text(text: str) -> str:
     """
@@ -83,16 +90,18 @@ def preprocess_text(text: str) -> str:
 
 def apply_aliases(text: str) -> str:
     """
-    Replace skill aliases with canonical names.
+    Replace skill aliases with canonical names using precompiled patterns.
     """
-    for alias, canonical in SKILL_ALIASES.items():
-        text = re.sub(r'\b' + re.escape(alias) + r'\b', canonical, text)
+    for alias, pattern in _ALIAS_PATTERNS.items():
+        canonical = SKILL_ALIASES[alias]
+        text = pattern.sub(canonical, text)
     return text
 
 
 def extract_skills_by_keyword(text: str) -> List[str]:
     """
     Extract skills using keyword matching against the skills taxonomy.
+    Uses precompiled regex patterns for efficiency.
 
     Args:
         text: Resume text
@@ -106,15 +115,13 @@ def extract_skills_by_keyword(text: str) -> List[str]:
     found_skills = set()
 
     # Match multi-word skills first (higher priority)
-    for skill in MULTI_WORD_SKILLS:
-        pattern = r'\b' + re.escape(skill) + r'\b'
-        if re.search(pattern, processed):
+    for skill, pattern in zip(MULTI_WORD_SKILLS, MULTI_WORD_PATTERNS):
+        if pattern.search(processed):
             found_skills.add(skill)
 
     # Match single-word skills
-    for skill in SINGLE_WORD_SKILLS:
-        pattern = r'\b' + re.escape(skill) + r'\b'
-        if re.search(pattern, processed):
+    for skill, pattern in zip(SINGLE_WORD_SKILLS, SINGLE_WORD_PATTERNS):
+        if pattern.search(processed):
             found_skills.add(skill)
 
     return sorted(list(found_skills))
