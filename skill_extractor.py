@@ -242,6 +242,25 @@ def extract_experience_years(text: str) -> Dict[str, any]:
     return experience_info
 
 
+def extract_education_info(text: str) -> Dict[str, any]:
+    """
+    Extract education details from resume text.
+
+    Args:
+        text: Resume text
+
+    Returns:
+        Dict with education information
+    """
+    edu_info = {
+        "degree": None,
+        "field": None,
+        "institution": None,
+        "gpa": None,
+        "graduation_year": None
+    }
+
+    text_lower = text.lower()
 
     # Detect degree level
     degree_patterns = [
