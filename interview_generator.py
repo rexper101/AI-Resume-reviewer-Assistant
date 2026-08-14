@@ -5,12 +5,16 @@ Uses local question database + optional Gemini/OpenAI API integration.
 """
 
 import random
+import logging
 from typing import List, Dict, Optional
 
 import sys
 import os
 sys.path.insert(0, os.path.dirname(__file__))
 from datasets.interview_questions import INTERVIEW_QUESTIONS, BEHAVIORAL_QUESTIONS
+import config
+
+logger = logging.getLogger(__name__)
 
 
 def get_questions_for_skill(skill: str, level: str = "mixed", count: int = 3) -> List[str]:

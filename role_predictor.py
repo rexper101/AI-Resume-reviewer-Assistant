@@ -118,12 +118,15 @@ class RolePredictor:
             model_type: "logistic_regression", "random_forest", or "naive_bayes"
         """
         self.model_type = model_type
-        self.vectorizer = TfidfVectorizer(
-            ngram_range=(1, 2),
-            max_features=3000,
-            stop_words='english',
-            min_df=1
-        )
+        
+        # Use config for TfidfVectorizer
+        vectorizer_config = {
+            "ngram_range": config.ROLE_PREDICTOR_CONFIG["tfidf_ngram"],
+            "max_features": config.ROLE_PREDICTOR_CONFIG["tfidf_max_features"],
+            "stop_words": "english",
+            "min_df": 1
+        }
+        self.vectorizer = TfidfVectorizer(**vectorizer_config)
         self.label_encoder = LabelEncoder()
         self.model = self._create_model(model_type)
         self.is_trained = False
@@ -131,21 +134,18 @@ class RolePredictor:
         self.classes = []
 
     def _create_model(self, model_type: str):
-        """Create the specified ML model."""
+        """Create the specified ML model using config."""
         models = {
             "logistic_regression": LogisticRegression(
-                max_iter=1000,
-                C=1.0,
-                solver='lbfgs',
-                random_state=42
+                **config.ROLE_PREDICTOR_CONFIG["logistic_regression"]
             ),
             "random_forest": RandomForestClassifier(
-                n_estimators=100,
-                max_depth=10,
-                random_state=42,
+                **config.ROLE_PREDICTOR_CONFIG["random_forest"],
                 n_jobs=-1
             ),
-            "naive_bayes": MultinomialNB(alpha=0.1)
+            "naive_bayes": MultinomialNB(
+                **config.ROLE_PREDICTOR_CONFIG["naive_bayes"]
+            )
         }
         return models.get(model_type, models["logistic_regression"])
 
