@@ -4,6 +4,7 @@ Trains on synthetic resume data using TF-IDF + Logistic Regression.
 """
 
 import numpy as np
+import logging
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -21,6 +22,9 @@ import os
 import sys
 sys.path.insert(0, os.path.dirname(__file__))
 from datasets.job_descriptions import JOB_ROLES
+import config
+
+logger = logging.getLogger(__name__)
 
 
 # ── Synthetic training data generation ────────────────────────────────────────

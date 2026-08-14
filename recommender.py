@@ -75,19 +75,20 @@ def compute_recommendations(resume_text: str, extracted_skills: List[str]) -> Li
     # Fit TF-IDF vectorizer on job corpus + resume
     all_texts = job_texts + [resume_query]
 
-    vectorizer = TfidfVectorizer(
-        stop_words='english',
-        ngram_range=(1, 2),  # unigrams and bigrams
-        max_features=5000,
-        min_df=1
-    )
-
     try:
+        vectorizer = TfidfVectorizer(**config.TFIDF_CONFIG)
         tfidf_matrix = vectorizer.fit_transform(all_texts)
+        logger.debug("TfidfVectorizer with full config succeeded")
     except Exception as e:
-        # Fallback to simpler vectorizer
-        vectorizer = TfidfVectorizer(stop_words='english')
-        tfidf_matrix = vectorizer.fit_transform(all_texts)
+        logger.warning(f"Full TfidfVectorizer config failed ({e}), using simpler config")
+        try:
+            # Fallback to simpler vectorizer
+            vectorizer = TfidfVectorizer(stop_words='english', max_features=2000)
+            tfidf_matrix = vectorizer.fit_transform(all_texts)
+            logger.info("Using simplified TfidfVectorizer")
+        except Exception as e2:
+            logger.error(f"Both vectorizers failed: {e2}")
+            raise ValueError(f"Could not vectorize resume text: {e2}")
 
     # Resume is the last document
     job_vectors = tfidf_matrix[:-1]
