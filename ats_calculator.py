@@ -190,20 +190,19 @@ def score_structure_quality(text: str, sections: Dict[str, str]) -> Tuple[float,
 
         # Check text length (optimal 500-1000 words for single page)
         word_count = len(text.split())
-        if MIN_WORD_COUNT <= word_count <= MAX_WORD_COUNT:
+        if OPTIMAL_WORD_COUNT - 250 <= word_count <= OPTIMAL_WORD_COUNT + 250:
             score += 10
             feedback.append(f"✅ Optimal length ({word_count} words)")
         elif word_count < MIN_WORD_COUNT:
             feedback.append(f"❌ Resume too short ({word_count} words) - expand to at least {MIN_WORD_COUNT}")
         else:
             feedback.append(f"⚠️ Resume quite long ({word_count} words) - consider condensing to {MAX_WORD_COUNT} max")
-    if 400 <= word_count <= 1200:
-        score += 10
-        feedback.append(f"✅ Good resume length ({word_count} words)")
-    elif word_count < 200:
-        feedback.append("❌ Resume is too short - expand your content")
-    else:
-        feedback.append("⚠️ Resume might be too long - aim for 1-2 pages")
+        
+        logger.debug(f"Structure quality: {score} points")
+        return min(100, score), feedback
+    except Exception as e:
+        logger.error(f"Error scoring structure quality: {e}")
+        return 0, [f"❌ Error analyzing resume structure: {str(e)}"]
 
     return min(100, score), feedback
 
