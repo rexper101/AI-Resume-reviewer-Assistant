@@ -78,16 +78,8 @@ def generate_interview_pack(
     Returns:
         Dict containing organized interview questions
     """
-    # Determine question difficulty based on experience
-    level_map = {
-        "Fresher/Student": "basic",
-        "Entry Level": "basic",
-        "Junior": "basic",
-        "Mid-Level": "intermediate",
-        "Senior": "advanced",
-        "Lead/Principal": "advanced"
-    }
-    question_level = level_map.get(experience_level, "basic")
+    # Determine question difficulty based on experience using config
+    question_level = config.EXPERIENCE_LEVELS.get(experience_level, "basic")
 
     # Priority skills to generate questions for
     # Match against our question database

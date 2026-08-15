@@ -10,27 +10,14 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Optional
 
+import sys
+import os
+sys.path.insert(0, os.path.dirname(__file__))
+import config
 
-# ── Color Palette (aligned with app.py theme) ─────────────────────────────────
-COLORS = {
-    "primary": "#0D9488",
-    "secondary": "#0891B2",
-    "accent": "#0F766E",
-    "success": "#10B981",
-    "warning": "#F59E0B",
-    "danger": "#EF4444",
-    "info": "#3B82F6",
-    "bg_dark": "#0F172A",
-    "card_bg": "#FFFFFF",
-    "text": "#0F172A",
-    "text_muted": "#64748B",
-    "grid": "#E2E8F0",
-}
-
-CHART_COLORS = [
-    "#14B8A6", "#06B6D4", "#8B5CF6", "#10B981", "#F59E0B",
-    "#3B82F6", "#5EEAD4", "#F97316", "#84CC16", "#A78BFA"
-]
+# ── Use color palette from config ──────────────────────────────────────────────
+COLORS = config.COLORS
+CHART_COLORS = config.CHART_COLORS
 
 CHART_TEMPLATE = {
     "layout": {
