@@ -137,117 +137,201 @@ class RolePredictor:
 
         # Split for evaluation
         X_train, X_test, y_train, y_test = train_test_split(
-            texts, encoded_labels, test_size=0.2, random_state=42, stratify=encoded_labels
-        )
 
-        # Vectorize
-        X_train_vec = self.vectorizer.fit_transform(X_train)
-        X_test_vec = self.vectorizer.transform(X_test)
+    def train(self) -> Dict[str, object]:
+        """
+        Train the role prediction model on synthetic training data.
 
-        # For Naive Bayes, values must be non-negative (TF-IDF is already non-negative)
-        # Train model
-        self.model.fit(X_train_vec, y_train)
+        Returns:
+            Dict with training results and model metrics
+            
+        Raises:
+            ValueError: If training data is insufficient
+        """
+        try:
+            logger.info(f"Starting model training with {self.model_type}")
+            
+            # Prepare training data from TRAINING_TEMPLATES
+            texts: List[str] = []
+            labels: List[str] = []
 
-        # Evaluate
-        y_pred = self.model.predict(X_test_vec)
-        accuracy = accuracy_score(y_test, y_pred)
+            for role, role_samples in TRAINING_TEMPLATES.items():
+                if not role_samples:
+                    logger.warning(f"No training samples for role: {role}")
+                    continue
+                texts.extend(role_samples)
+                labels.extend([role] * len(role_samples))
 
-        self.is_trained = True
-        self.training_accuracy = accuracy
+            # Validate training data
+            if len(texts) < MIN_TRAINING_SAMPLES:
+                logger.error(f"Insufficient training samples: {len(texts)}")
+                raise ValueError(f"Need at least {MIN_TRAINING_SAMPLES} training samples")
 
-        return {
-            "accuracy": round(accuracy * 100, 1),
-            "model_type": self.model_type,
-            "training_samples": len(X_train),
-            "test_samples": len(X_test),
-            "num_classes": len(self.classes),
-            "classes": self.classes
-        }
+            logger.info(f"Training on {len(texts)} samples, {len(set(labels))} classes")
 
-    def predict(self, resume_text: str, skills: List[str]) -> Dict:
+            # Encode labels
+            self.label_encoder.fit(labels)
+            encoded_labels = self.label_encoder.transform(labels)
+            self.classes = list(self.label_encoder.classes_)
+
+            # Split data
+            X_train, X_test, y_train, y_test = train_test_split(
+                texts, encoded_labels, test_size=TEST_SIZE, random_state=RANDOM_STATE, stratify=encoded_labels
+            )
+
+            # Vectorize
+            logger.debug("Vectorizing training data with TF-IDF")
+            X_train_vec = self.vectorizer.fit_transform(X_train)
+            X_test_vec = self.vectorizer.transform(X_test)
+
+            # For Naive Bayes, values must be non-negative (TF-IDF is already non-negative)
+            # Train model
+            logger.debug(f"Training {self.model_type} classifier")
+            self.model.fit(X_train_vec, y_train)
+
+            # Evaluate
+            y_pred = self.model.predict(X_test_vec)
+            accuracy = accuracy_score(y_test, y_pred)
+
+            self.is_trained = True
+            self.training_accuracy = accuracy
+            
+            logger.info(f"Model training complete. Accuracy: {accuracy * 100:.1f}%")
+
+            return {
+                "accuracy": round(accuracy * 100, 1),
+                "model_type": self.model_type,
+                "training_samples": len(X_train),
+                "test_samples": len(X_test),
+                "num_classes": len(self.classes),
+                "classes": self.classes
+            }
+        except Exception as e:
+            logger.error(f"Error training model: {e}")
+            raise
+
+    def predict(self, resume_text: str, skills: Optional[List[str]] = None) -> Dict[str, object]:
         """
         Predict the most suitable role for a resume.
 
         Args:
             resume_text: Full resume text
-            skills: Extracted skills list
+            skills: Optional extracted skills list (improves prediction)
 
         Returns:
-            Prediction result with probabilities
+            Dict with prediction result and probabilities
+            
+        Raises:
+            ValueError: If resume_text is empty
         """
-        if not self.is_trained:
-            self.train()
+        if not resume_text or not resume_text.strip():
+            logger.warning("Empty resume text provided to predict()")
+            raise ValueError("resume_text cannot be empty")
+        
+        try:
+            if not self.is_trained:
+                logger.info("Model not trained yet, training now")
+                self.train()
 
-        # Prepare input: combine resume text with skills (weighted)
-        input_text = f"{resume_text.lower()} {' '.join(skills * 3)}"
+            # Prepare input: combine resume text with skills (weighted)
+            input_text = f"{resume_text.lower()}"
+            if skills:
+                input_text += f" {' '.join(str(s) for s in skills if s) * 3}"
 
-        # Vectorize
-        input_vec = self.vectorizer.transform([input_text])
+            logger.debug(f"Predicting role for resume with {len(input_text)} characters")
 
-        # Get prediction and probabilities
-        predicted_label = self.model.predict(input_vec)[0]
-        predicted_role = self.label_encoder.inverse_transform([predicted_label])[0]
+            # Vectorize
+            input_vec = self.vectorizer.transform([input_text])
 
-        # Get probabilities
-        if hasattr(self.model, 'predict_proba'):
-            probabilities = self.model.predict_proba(input_vec)[0]
-        else:
-            # For models without predict_proba
-            probabilities = np.zeros(len(self.classes))
-            probabilities[predicted_label] = 1.0
+            # Get prediction and probabilities
+            predicted_label = self.model.predict(input_vec)[0]
+            predicted_role = self.label_encoder.inverse_transform([predicted_label])[0]
 
-        # Build probability map
-        prob_map = {}
-        for i, role in enumerate(self.classes):
-            prob_map[role] = round(float(probabilities[i]) * 100, 1)
+            # Get probabilities
+            if hasattr(self.model, 'predict_proba'):
+                probabilities = self.model.predict_proba(input_vec)[0]
+            else:
+                # For models without predict_proba
+                probabilities = np.zeros(len(self.classes))
+                probabilities[predicted_label] = 1.0
 
-        # Sort by probability
-        sorted_probs = dict(sorted(prob_map.items(), key=lambda x: x[1], reverse=True))
+            # Build probability map
+            prob_map: Dict[str, float] = {}
+            for i, role in enumerate(self.classes):
+                prob_map[role] = round(float(probabilities[i]) * 100, 1)
 
-        return {
-            "predicted_role": predicted_role,
-            "confidence": round(float(probabilities[predicted_label]) * 100, 1),
-            "all_probabilities": sorted_probs,
-            "top_3_roles": list(sorted_probs.items())[:3],
-            "model_type": self.model_type,
-            "model_accuracy": self.training_accuracy * 100
-        }
+            # Sort by probability
+            sorted_probs = dict(sorted(prob_map.items(), key=lambda x: x[1], reverse=True))
 
-    def get_feature_importance(self, resume_text: str, skills: List[str], top_n: int = 10) -> List[Dict]:
+            logger.info(f"Predicted role: {predicted_role} with {sorted_probs[predicted_role]}% confidence")
+
+            return {
+                "predicted_role": predicted_role,
+                "confidence": round(float(probabilities[predicted_label]) * 100, 1),
+                "all_probabilities": sorted_probs,
+                "top_3_roles": list(sorted_probs.items())[:3],
+                "model_type": self.model_type,
+                "model_accuracy": round(self.training_accuracy * 100, 1)
+            }
+        except Exception as e:
+            logger.error(f"Error predicting role: {e}")
+            return {
+                "error": str(e),
+                "predicted_role": "Unknown",
+                "confidence": 0.0,
+                "all_probabilities": {},
+                "top_3_roles": [],
+                "model_type": self.model_type
+            }
+
+    def get_feature_importance(self, resume_text: str, skills: Optional[List[str]] = None, top_n: int = 10) -> List[Dict[str, object]]:
         """
         Get the most influential features (skills/keywords) for the prediction.
         Implements Explainable AI for the recommendation.
 
         Args:
             resume_text: Resume text
-            skills: Extracted skills
-            top_n: Number of top features to return
+            skills: Optional extracted skills list
+            top_n: Number of top features to return (1-20 recommended)
 
         Returns:
-            List of feature importance dicts
+            List of feature importance dicts with feature names and scores
+            
+        Raises:
+            ValueError: If top_n is invalid
         """
-        if not self.is_trained:
+        if not resume_text or not resume_text.strip():
+            logger.warning("Empty resume text provided to get_feature_importance()")
             return []
+        
+        if top_n < 1 or top_n > 50:
+            logger.warning(f"Invalid top_n: {top_n}, using default of 10")
+            top_n = 10
+        
+        try:
+            if not self.is_trained:
+                logger.debug("Model not trained, returning empty importance list")
+                return []
 
-        input_text = f"{resume_text.lower()} {' '.join(skills * 3)}"
-        input_vec = self.vectorizer.transform([input_text])
+            input_text = f"{resume_text.lower()}"
+            if skills:
+                input_text += f" {' '.join(str(s) for s in skills if s) * 3}"
+            
+            input_vec = self.vectorizer.transform([input_text])
 
-        feature_names = self.vectorizer.get_feature_names_out()
-        input_array = input_vec.toarray()[0]
+            feature_names = self.vectorizer.get_feature_names_out()
+            input_array = input_vec.toarray()[0]
 
-        # Get non-zero features
-        non_zero_indices = np.where(input_array > 0)[0]
+            # For Logistic Regression: use coefficient magnitude
+            if hasattr(self.model, 'coef_') and self.model_type == "logistic_regression":
+                predicted_class = self.model.predict(input_vec)[0]
+                coefficients = self.model.coef_[predicted_class]
+                importance_scores = input_array * np.abs(coefficients)
+            else:
+                # Fall back to TF-IDF scores
+                importance_scores = input_array
 
-        # For Logistic Regression: use coefficient magnitude
-        if hasattr(self.model, 'coef_') and self.model_type == "logistic_regression":
-            predicted_class = self.model.predict(input_vec)[0]
-            coefficients = self.model.coef_[predicted_class]
-            importance_scores = input_array * np.abs(coefficients)
-        else:
-            # Fall back to TF-IDF scores
-            importance_scores = input_array
-
-        # Get top features
+            # Get top features
         top_indices = np.argsort(importance_scores)[-top_n:][::-1]
 
         features = []
