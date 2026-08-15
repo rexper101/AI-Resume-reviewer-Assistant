@@ -6,7 +6,7 @@ Supports PDF files with fallback error handling.
 import re
 import io
 import logging
-from typing import Optional
+from typing import Optional, Dict, BinaryIO
 
 # Import config
 import sys
@@ -16,8 +16,11 @@ import config
 
 logger = logging.getLogger(__name__)
 
+# Maximum text length to prevent memory issues
+MAX_TEXT_LENGTH = config.MAX_TEXT_LENGTH
 
-def extract_text_from_pdf(file) -> str:
+
+def extract_text_from_pdf(file: BinaryIO) -> str:
     """
     Extract raw text from a PDF file object.
     Tries multiple PDF libraries in order for robustness.
@@ -30,20 +33,34 @@ def extract_text_from_pdf(file) -> str:
         
     Raises:
         ValueError: If no text could be extracted from any library
+        IOError: If file reading fails
     """
+    if not file:
+        raise ValueError("File object cannot be None")
+    
     text = ""
     
     # Try pdfplumber first (better layout handling)
     try:
         import pdfplumber
         with pdfplumber.open(file) as pdf:
-            for page in pdf.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text += page_text + "\n"
+            # Safety check: don't process too many pages
+            max_pages = min(len(pdf.pages), config.MAX_PDF_PAGES)
+            for i, page in enumerate(pdf.pages[:max_pages]):
+                try:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text + "\n"
+                        if len(text) > MAX_TEXT_LENGTH:
+                            logger.warning(f"PDF text exceeds maximum length at page {i+1}")
+                            break
+                except Exception as page_err:
+                    logger.debug(f"Failed to extract page {i+1} with pdfplumber: {page_err}")
+                    continue
+        
         if text.strip():
             logger.info("Successfully extracted text using pdfplumber")
-            return text
+            return text[:MAX_TEXT_LENGTH]
     except ImportError:
         logger.debug("pdfplumber not installed, trying next library")
     except Exception as e:
@@ -55,13 +72,23 @@ def extract_text_from_pdf(file) -> str:
         if hasattr(file, 'seek'):
             file.seek(0)
         reader = PyPDF2.PdfReader(file)
-        for page in reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
+        max_pages = min(len(reader.pages), config.MAX_PDF_PAGES)
+        
+        for i, page in enumerate(reader.pages[:max_pages]):
+            try:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+                    if len(text) > MAX_TEXT_LENGTH:
+                        logger.warning(f"PDF text exceeds maximum length at page {i+1}")
+                        break
+            except Exception as page_err:
+                logger.debug(f"Failed to extract page {i+1} with PyPDF2: {page_err}")
+                continue
+        
         if text.strip():
             logger.info("Successfully extracted text using PyPDF2")
-            return text
+            return text[:MAX_TEXT_LENGTH]
     except ImportError:
         logger.debug("PyPDF2 not installed, trying next library")
     except Exception as e:
@@ -73,13 +100,23 @@ def extract_text_from_pdf(file) -> str:
         if hasattr(file, 'seek'):
             file.seek(0)
         reader = PdfReader(file)
-        for page in reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n"
+        max_pages = min(len(reader.pages), config.MAX_PDF_PAGES)
+        
+        for i, page in enumerate(reader.pages[:max_pages]):
+            try:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+                    if len(text) > MAX_TEXT_LENGTH:
+                        logger.warning(f"PDF text exceeds maximum length at page {i+1}")
+                        break
+            except Exception as page_err:
+                logger.debug(f"Failed to extract page {i+1} with pypdf: {page_err}")
+                continue
+        
         if text.strip():
             logger.info("Successfully extracted text using pypdf")
-            return text
+            return text[:MAX_TEXT_LENGTH]
     except ImportError:
         logger.debug("pypdf not installed")
     except Exception as e:
@@ -100,7 +137,13 @@ def clean_resume_text(text: str) -> str:
 
     Returns:
         Cleaned text
+        
+    Raises:
+        ValueError: If input text is None or empty
     """
+    if not text:
+        raise ValueError("Input text cannot be None or empty")
+    
     # Remove excessive whitespace
     text = config.WHITESPACE_PATTERN.sub('\n\n', text)
     text = config.MULTI_SPACE_PATTERN.sub(' ', text)
@@ -111,10 +154,15 @@ def clean_resume_text(text: str) -> str:
     # Fix common PDF extraction artifacts
     text = config.CAMELCASE_PATTERN.sub(r'\1 \2', text)
 
-    return text.strip()
+    cleaned = text.strip()
+    
+    if not cleaned:
+        logger.warning("Text cleaning resulted in empty string")
+    
+    return cleaned
 
 
-def detect_sections(text: str) -> dict:
+def detect_sections(text: str) -> Dict[str, str]:
     """
     Detect key sections in a resume using precompiled regex patterns.
 
@@ -123,8 +171,14 @@ def detect_sections(text: str) -> dict:
 
     Returns:
         Dict of detected section names and their content
+        
+    Raises:
+        ValueError: If input text is empty
     """
-    sections = {}
+    if not text or not text.strip():
+        raise ValueError("Cannot detect sections from empty text")
+    
+    sections: Dict[str, list] = {}
 
     lines = text.split('\n')
     current_section = "header"
@@ -138,7 +192,7 @@ def detect_sections(text: str) -> dict:
         # Check if line is a section header using precompiled patterns
         found_section = False
         for section_name, pattern in config.SECTION_PATTERNS.items():
-            if re.match(r'^' + pattern + r'[\s:]*$', line_stripped, re.IGNORECASE):
+            if pattern.match(line_stripped.rstrip(':').rstrip()):
                 current_section = section_name
                 sections[current_section] = []
                 found_section = True
@@ -152,7 +206,7 @@ def detect_sections(text: str) -> dict:
     return {k: '\n'.join(v) for k, v in sections.items()}
 
 
-def extract_contact_info(text: str) -> dict:
+def extract_contact_info(text: str) -> Dict[str, Optional[str]]:
     """
     Extract contact information from resume text using precompiled patterns.
 
@@ -162,7 +216,17 @@ def extract_contact_info(text: str) -> dict:
     Returns:
         Dict with email, phone, linkedin, github, location
     """
-    contact = {
+    if not text:
+        logger.warning("Cannot extract contact info from empty text")
+        return {
+            "email": None,
+            "phone": None,
+            "linkedin": None,
+            "github": None,
+            "location": None,
+        }
+    
+    contact: Dict[str, Optional[str]] = {
         "email": None,
         "phone": None,
         "linkedin": None,
@@ -170,30 +234,33 @@ def extract_contact_info(text: str) -> dict:
         "location": None,
     }
 
-    # Email
-    email_match = re.search(config.CONTACT_PATTERNS["email"], text)
-    if email_match:
-        contact["email"] = email_match.group()
+    try:
+        # Email
+        email_match = config.CONTACT_PATTERNS["email"].search(text)
+        if email_match:
+            contact["email"] = email_match.group()
 
-    # Phone
-    phone_match = re.search(config.CONTACT_PATTERNS["phone"], text)
-    if phone_match:
-        contact["phone"] = phone_match.group().strip()
+        # Phone
+        phone_match = config.CONTACT_PATTERNS["phone"].search(text)
+        if phone_match:
+            contact["phone"] = phone_match.group().strip()
 
-    # LinkedIn
-    linkedin_match = re.search(config.CONTACT_PATTERNS["linkedin"], text, re.IGNORECASE)
-    if linkedin_match:
-        contact["linkedin"] = linkedin_match.group()
+        # LinkedIn
+        linkedin_match = config.CONTACT_PATTERNS["linkedin"].search(text.lower())
+        if linkedin_match:
+            contact["linkedin"] = linkedin_match.group()
 
-    # GitHub
-    github_match = re.search(config.CONTACT_PATTERNS["github"], text, re.IGNORECASE)
-    if github_match:
-        contact["github"] = github_match.group()
+        # GitHub
+        github_match = config.CONTACT_PATTERNS["github"].search(text.lower())
+        if github_match:
+            contact["github"] = github_match.group()
 
-    # Location
-    location_match = re.search(config.CONTACT_PATTERNS["location"], text)
-    if location_match:
-        contact["location"] = location_match.group()
+        # Location
+        location_match = config.CONTACT_PATTERNS["location"].search(text)
+        if location_match:
+            contact["location"] = location_match.group()
+    except Exception as e:
+        logger.error(f"Error extracting contact info: {e}")
 
     return contact
 

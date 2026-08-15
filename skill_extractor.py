@@ -1,11 +1,14 @@
 """
 skill_extractor.py - NLP-based skill extraction from resume text.
 Uses keyword matching, NLP preprocessing, and pattern recognition.
+Implements caching for improved performance.
 """
 
 import re
-from typing import List, Dict, Tuple
+import logging
+from typing import List, Dict, Tuple, Optional, Set
 from collections import Counter
+from functools import lru_cache
 
 # Import dataset
 import sys
@@ -13,23 +16,26 @@ import os
 sys.path.insert(0, os.path.dirname(__file__))
 from datasets.job_descriptions import SKILLS_TAXONOMY
 
+logger = logging.getLogger(__name__)
 
 # ── Master skills list (flattened from taxonomy) ──────────────────────────────
-ALL_SKILLS = []
+ALL_SKILLS: List[str] = []
 for category, skills in SKILLS_TAXONOMY.items():
     ALL_SKILLS.extend(skills)
 ALL_SKILLS = list(set(ALL_SKILLS))
 
 # Skills that need exact phrase matching (multi-word)
-MULTI_WORD_SKILLS = [s for s in ALL_SKILLS if ' ' in s]
-SINGLE_WORD_SKILLS = [s for s in ALL_SKILLS if ' ' not in s]
+MULTI_WORD_SKILLS: List[str] = [s for s in ALL_SKILLS if ' ' in s]
+SINGLE_WORD_SKILLS: List[str] = [s for s in ALL_SKILLS if ' ' not in s]
 
 # Precompile skill patterns for efficiency
-MULTI_WORD_PATTERNS = [re.compile(r'\b' + re.escape(skill) + r'\b') for skill in MULTI_WORD_SKILLS]
-SINGLE_WORD_PATTERNS = [re.compile(r'\b' + re.escape(skill) + r'\b') for skill in SINGLE_WORD_SKILLS]
+MULTI_WORD_PATTERNS: List[re.Pattern] = [re.compile(r'\b' + re.escape(skill) + r'\b', re.IGNORECASE) 
+                                         for skill in MULTI_WORD_SKILLS]
+SINGLE_WORD_PATTERNS: List[re.Pattern] = [re.compile(r'\b' + re.escape(skill) + r'\b', re.IGNORECASE) 
+                                          for skill in SINGLE_WORD_SKILLS]
 
 # Additional skill aliases / synonyms
-SKILL_ALIASES = {
+SKILL_ALIASES: Dict[str, str] = {
     "ml": "machine learning",
     "dl": "deep learning",
     "ai": "artificial intelligence",
@@ -73,14 +79,28 @@ SKILL_ALIASES = {
 }
 
 # Precompile alias patterns
-_ALIAS_PATTERNS = {alias: re.compile(r'\b' + re.escape(alias) + r'\b') for alias in SKILL_ALIASES.keys()}
+_ALIAS_PATTERNS: Dict[str, re.Pattern] = {
+    alias: re.compile(r'\b' + re.escape(alias) + r'\b', re.IGNORECASE) 
+    for alias in SKILL_ALIASES.keys()
+}
 
 
+@lru_cache(maxsize=128)
 def preprocess_text(text: str) -> str:
     """
     Lowercase and normalize text for skill matching.
+    Uses LRU cache for repeated inputs.
+    
+    Args:
+        text: Input text to preprocess
+    
+    Returns:
+        Normalized text
     """
-    text = text.lower()
+    if not text:
+        return ""
+    
+    text = text.lower().strip()
     # Normalize punctuation
     text = re.sub(r'[/\\|]', ' ', text)
     text = re.sub(r'[\(\)\[\]\{\}]', ' ', text)
@@ -88,14 +108,26 @@ def preprocess_text(text: str) -> str:
     return text
 
 
+@lru_cache(maxsize=128)
 def apply_aliases(text: str) -> str:
     """
     Replace skill aliases with canonical names using precompiled patterns.
+    Uses LRU cache for repeated inputs.
+    
+    Args:
+        text: Input text with potential aliases
+    
+    Returns:
+        Text with aliases replaced
     """
+    if not text:
+        return ""
+    
+    result = text
     for alias, pattern in _ALIAS_PATTERNS.items():
         canonical = SKILL_ALIASES[alias]
-        text = pattern.sub(canonical, text)
-    return text
+        result = pattern.sub(canonical, result)
+    return result
 
 
 def extract_skills_by_keyword(text: str) -> List[str]:
@@ -107,27 +139,40 @@ def extract_skills_by_keyword(text: str) -> List[str]:
         text: Resume text
 
     Returns:
-        List of detected skill names
+        List of detected skill names (sorted)
+        
+    Raises:
+        ValueError: If text is None or empty
     """
-    processed = preprocess_text(text)
-    processed = apply_aliases(processed)
+    if not text:
+        logger.warning("Cannot extract skills from empty text")
+        return []
+    
+    try:
+        processed = preprocess_text(text)
+        processed = apply_aliases(processed)
 
-    found_skills = set()
+        found_skills: Set[str] = set()
 
-    # Match multi-word skills first (higher priority)
-    for skill, pattern in zip(MULTI_WORD_SKILLS, MULTI_WORD_PATTERNS):
-        if pattern.search(processed):
-            found_skills.add(skill)
+        # Match multi-word skills first (higher priority)
+        for skill, pattern in zip(MULTI_WORD_SKILLS, MULTI_WORD_PATTERNS):
+            if pattern.search(processed):
+                found_skills.add(skill)
 
-    # Match single-word skills
-    for skill, pattern in zip(SINGLE_WORD_SKILLS, SINGLE_WORD_PATTERNS):
-        if pattern.search(processed):
-            found_skills.add(skill)
+        # Match single-word skills
+        for skill, pattern in zip(SINGLE_WORD_SKILLS, SINGLE_WORD_PATTERNS):
+            if pattern.search(processed):
+                found_skills.add(skill)
 
-    return sorted(list(found_skills))
+        result = sorted(list(found_skills))
+        logger.debug(f"Extracted {len(result)} unique skills from text")
+        return result
+    except Exception as e:
+        logger.error(f"Error extracting skills: {e}")
+        return []
 
 
-def extract_skills_by_section(sections: dict) -> Dict[str, List[str]]:
+def extract_skills_by_section(sections: Dict[str, str]) -> Dict[str, List[str]]:
     """
     Extract skills from specific resume sections with weighted importance.
 
@@ -137,17 +182,85 @@ def extract_skills_by_section(sections: dict) -> Dict[str, List[str]]:
     Returns:
         Dict mapping section → skills found
     """
-    section_skills = {}
+    if not sections:
+        logger.warning("Cannot extract section skills from empty sections dict")
+        return {}
+    
+    section_skills: Dict[str, List[str]] = {}
 
-    priority_sections = ["skills", "experience", "projects", "certifications", "summary"]
+    # Priority order based on relevance
+    priority_sections: List[str] = ["skills", "experience", "projects", "certifications", "summary"]
 
     for section_name in priority_sections:
-        if section_name in sections:
-            skills = extract_skills_by_keyword(sections[section_name])
-            if skills:
-                section_skills[section_name] = skills
+        if section_name in sections and sections[section_name]:
+            try:
+                skills = extract_skills_by_keyword(sections[section_name])
+                if skills:
+                    section_skills[section_name] = skills
+                    logger.debug(f"Found {len(skills)} skills in {section_name} section")
+            except Exception as e:
+                logger.error(f"Error extracting skills from section {section_name}: {e}")
+                continue
 
     return section_skills
+
+
+def dedup_and_merge_skills(section_skills: Dict[str, List[str]]) -> Dict[str, object]:
+    """
+    Merge and deduplicate skills from different sections with importance weighting.
+
+    Args:
+        section_skills: Dict of section → skills from extract_skills_by_section
+
+    Returns:
+        Dict with merged_skills, skill_frequency, section_mapping
+    """
+    if not section_skills:
+        return {
+            "merged_skills": [],
+            "skill_frequency": {},
+            "section_mapping": {}
+        }
+    
+    try:
+        # Track skill frequency and sections
+        skill_counter: Counter = Counter()
+        section_mapping: Dict[str, List[str]] = {}
+
+        # Weight skills by section importance
+        section_weights = {
+            "skills": 3.0,
+            "experience": 2.0,
+            "projects": 1.5,
+            "certifications": 2.0,
+            "summary": 1.0
+        }
+
+        for section, skills in section_skills.items():
+            weight = section_weights.get(section, 1.0)
+            for skill in skills:
+                skill_counter[skill] += weight
+                if skill not in section_mapping:
+                    section_mapping[skill] = []
+                section_mapping[skill].append(section)
+
+        # Sort by frequency
+        merged_skills = sorted(skill_counter.keys(), 
+                             key=lambda x: skill_counter[x], 
+                             reverse=True)
+
+        return {
+            "merged_skills": merged_skills,
+            "skill_frequency": dict(skill_counter),
+            "section_mapping": section_mapping
+        }
+    except Exception as e:
+        logger.error(f"Error merging skills: {e}")
+        return {
+            "merged_skills": [],
+            "skill_frequency": {},
+            "section_mapping": {}
+        }
 
 
 def categorize_skills(skills: List[str]) -> Dict[str, List[str]]:
