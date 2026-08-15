@@ -4,10 +4,10 @@ Contains constants, regex patterns, and color schemes used across modules.
 """
 
 import re
-from typing import Dict, List
+from typing import Dict, List, Pattern
 
 # ── Color Scheme ───────────────────────────────────────────────────────────────
-COLORS = {
+COLORS: Dict[str, str] = {
     "primary": "#0D9488",
     "secondary": "#0891B2",
     "accent": "#0F766E",
@@ -22,13 +22,13 @@ COLORS = {
     "grid": "#E2E8F0",
 }
 
-CHART_COLORS = [
+CHART_COLORS: List[str] = [
     "#14B8A6", "#06B6D4", "#8B5CF6", "#10B981", "#F59E0B",
     "#3B82F6", "#5EEAD4", "#F97316", "#84CC16", "#A78BFA"
 ]
 
-# ── Resume Parser Patterns ──────────────────────────────────────────────────────
-SECTION_PATTERNS = {
+# ── Resume Parser Patterns (Raw strings for compilation) ──────────────────────
+_SECTION_PATTERNS_RAW: Dict[str, str] = {
     "contact": r"(contact|personal\s+info|contact\s+information)",
     "summary": r"(summary|objective|profile|about\s+me|professional\s+summary)",
     "experience": r"(experience|work\s+experience|employment|work\s+history|professional\s+experience)",
@@ -39,12 +39,24 @@ SECTION_PATTERNS = {
     "languages": r"(languages?)",
 }
 
-CONTACT_PATTERNS = {
+# Precompile section patterns for efficiency
+SECTION_PATTERNS: Dict[str, Pattern] = {
+    key: re.compile(pattern, re.IGNORECASE) 
+    for key, pattern in _SECTION_PATTERNS_RAW.items()
+}
+
+_CONTACT_PATTERNS_RAW: Dict[str, str] = {
     "email": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
     "phone": r'(\+?[\d\s\-\(\)]{10,15})',
     "linkedin": r'linkedin\.com/in/[\w\-]+',
     "github": r'github\.com/[\w\-]+',
     "location": r'\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*,\s*(?:[A-Z]{2}|[A-Z][a-z]+))\b',
+}
+
+# Precompile contact patterns for efficiency
+CONTACT_PATTERNS: Dict[str, Pattern] = {
+    key: re.compile(pattern) 
+    for key, pattern in _CONTACT_PATTERNS_RAW.items()
 }
 
 # ── Text Cleaning Patterns ──────────────────────────────────────────────────────
