@@ -33,6 +33,50 @@ MIN_TRAINING_SAMPLES = 10
 TEST_SIZE = 0.2
 RANDOM_STATE = 42
 
+# ── Synthetic training data ────────────────────────────────────────────────────
+TRAINING_TEMPLATES = {
+    "Data Scientist": [
+        "python machine learning deep learning tensorflow scikit-learn pandas numpy statistics data visualization NLP AWS spark feature engineering",
+        "data science machine learning python SQL statistics R tensorflow keras scikit-learn jupyter pandas data analysis predictive modeling",
+        "python tensorflow pytorch deep learning neural networks NLP transformers BERT data preprocessing feature engineering model deployment AWS",
+        "machine learning python statistics scikit-learn pandas numpy matplotlib seaborn plotly data visualization SQL postgres jupyter",
+        "data scientist python R machine learning statistical analysis hypothesis testing A/B testing feature engineering random forest XGBoost",
+    ],
+    "Data Analyst": [
+        "SQL Excel Tableau Power BI python pandas data analysis business intelligence reporting ETL data cleaning postgresql",
+        "SQL data analysis Excel Tableau Power BI reporting business intelligence KPI metrics dashboards data visualization MySQL",
+        "excel SQL Tableau data analysis business intelligence reporting stakeholder management data cleaning ETL data modeling",
+        "python pandas SQL data analysis visualization matplotlib seaborn plotly Excel Power BI reporting business analysis",
+        "SQL MySQL PostgreSQL data analysis reporting Excel Power BI Tableau looker business intelligence data warehouse ETL",
+    ],
+    "ML Engineer": [
+        "python machine learning MLOps docker kubernetes AWS FastAPI model deployment scikit-learn tensorflow CI/CD REST API",
+        "MLOps docker kubernetes AWS machine learning model serving FastAPI python TensorFlow PyTorch CI/CD GitHub Actions",
+        "python tensorflow pytorch model deployment docker kubernetes AWS SageMaker mlflow feature engineering REST API",
+        "machine learning engineering python docker kubernetes CI/CD model monitoring A/B testing FastAPI microservices AWS",
+    ],
+    "Python Developer": [
+        "python django FastAPI Flask REST API SQL postgresql celery redis docker git CI/CD linux backend development",
+        "python backend django REST API postgresql MySQL docker kubernetes AWS CI/CD git unit testing celery SQLAlchemy",
+        "python FastAPI docker postgresql redis REST API authentication JWT testing CI/CD GitHub Actions git linux",
+    ],
+    "Backend Developer": [
+        "java Spring Boot REST API microservices docker kubernetes MySQL AWS CI/CD git linux backend development",
+        "node.js express REST API MongoDB SQL docker kubernetes AWS CI/CD microservices authentication JWT git",
+        "backend development python java node.js SQL NoSQL docker microservices REST API cloud AWS Azure",
+    ],
+    "Frontend Developer": [
+        "react javascript typescript HTML CSS tailwind redux REST API git jest responsive design node.js webpack",
+        "react.js typescript javascript HTML5 CSS3 styled-components redux REST API git jest CI/CD next.js",
+        "javascript react next.js typescript CSS HTML REST API git unit testing node.js webpack tailwind",
+    ],
+    "DevOps Engineer": [
+        "docker kubernetes Jenkins GitHub Actions CI/CD AWS EC2 S3 IAM terraform ansible linux shell scripting",
+        "cloud infrastructure AWS Azure GCP docker kubernetes terraform ansible Jenkins monitoring prometheus grafana",
+        "DevOps automation docker kubernetes Jenkins GitHub Actions terraform ansible linux python CI/CD deployment",
+    ],
+}
+
 
 class RolePredictor:
     """
@@ -97,46 +141,6 @@ class RolePredictor:
         selected_model = models.get(model_type, models[DEFAULT_MODEL_TYPE])
         logger.debug(f"Created model: {type(selected_model).__name__}")
         return selected_model
-
-    def generate_training_data(self) -> Tuple[List[str], List[str]]:
-        """
-        Generate synthetic training data from templates.
-
-        Returns:
-            Tuple of (texts, labels)
-        """
-        texts = []
-        labels = []
-
-        for role, templates in TRAINING_TEMPLATES.items():
-            for template in templates:
-                texts.append(template)
-                labels.append(role)
-
-                # Data augmentation: shuffle words in template
-                words = template.split()
-                for _ in range(2):  # 2 augmented versions per template
-                    np.random.shuffle(words)
-                    texts.append(' '.join(words))
-                    labels.append(role)
-
-        return texts, labels
-
-    def train(self) -> Dict:
-        """
-        Train the model on synthetic data.
-
-        Returns:
-            Training metrics dict
-        """
-        texts, labels = self.generate_training_data()
-
-        # Encode labels
-        encoded_labels = self.label_encoder.fit_transform(labels)
-        self.classes = list(self.label_encoder.classes_)
-
-        # Split for evaluation
-        X_train, X_test, y_train, y_test = train_test_split(
 
     def train(self) -> Dict[str, object]:
         """
@@ -332,21 +336,27 @@ class RolePredictor:
                 importance_scores = input_array
 
             # Get top features
-        top_indices = np.argsort(importance_scores)[-top_n:][::-1]
+            top_indices = np.argsort(importance_scores)[-top_n:][::-1]
 
-        features = []
-        for idx in top_indices:
-            if idx < len(feature_names) and importance_scores[idx] > 0:
-                features.append({
-                    "feature": feature_names[idx],
-                    "score": round(float(importance_scores[idx]), 4),
-                    "is_skill": feature_names[idx] in [s.lower() for s in skills]
-                })
+            features: List[Dict[str, object]] = []
+            skill_set = {s.lower() for s in (skills or []) if s}
+            
+            for idx in top_indices:
+                if idx < len(feature_names) and importance_scores[idx] > 0:
+                    features.append({
+                        "feature": str(feature_names[idx]),
+                        "score": round(float(importance_scores[idx]), 4),
+                        "is_skill": feature_names[idx] in skill_set
+                    })
 
-        return features
+            logger.debug(f"Extracted {len(features)} important features")
+            return features
+        except Exception as e:
+            logger.error(f"Error computing feature importance: {e}")
+            return []
 
 
-def get_role_predictor(model_type: str = "logistic_regression") -> RolePredictor:
+def get_role_predictor(model_type: str = DEFAULT_MODEL_TYPE) -> RolePredictor:
     """
     Factory function to get a trained RolePredictor instance.
 

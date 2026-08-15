@@ -9,7 +9,32 @@ import html
 import streamlit as st
 import time
 import json
+import logging
 from pathlib import Path
+from typing import Optional, Dict, Any
+
+logger = logging.getLogger(__name__)
+
+# ── Session State Configuration ────────────────────────────────────────────────
+SESSION_DEFAULTS = {
+    "resume_text": None,
+    "parsed_resume": None,
+    "extracted_skills": None,
+    "skill_data": None,
+    "recommendations": None,
+    "ats_result": None,
+    "prediction_result": None,
+    "interview_pack": None,
+    "skill_gap": None,
+    "current_page": "Home",
+    "demo_mode": False,
+    "analysis_done": False,
+    "error_message": None,
+    "last_update_time": None,
+}
+
+MAX_RETRIES_ON_ERROR = 3
+SESSION_TIMEOUT_MINUTES = 30
 
 # ── Page Configuration ─────────────────────────────────────────────────────────
 st.set_page_config(
