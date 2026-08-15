@@ -212,13 +212,22 @@ def get_top_recommendations(resume_text: str, extracted_skills: List[str], top_n
     Args:
         resume_text: Full resume text
         extracted_skills: Skills extracted from resume
-        top_n: Number of top recommendations to return
+        top_n: Number of top recommendations to return (default: 5)
 
     Returns:
-        Top N recommendations
+        Top N recommendations ordered by match percentage
+        
+    Raises:
+        ValueError: If top_n is not a positive integer
     """
+    if not isinstance(top_n, int) or top_n < 1:
+        logger.error(f"Invalid top_n value: {top_n}")
+        raise ValueError("top_n must be a positive integer")
+    
     all_recs = compute_recommendations(resume_text, extracted_skills)
-    return all_recs[:top_n]
+    result = all_recs[:top_n]
+    logger.debug(f"Returning top {len(result)} of {len(all_recs)} recommendations")
+    return result
 
 
 def explain_recommendation(recommendation: Dict, extracted_skills: List[str]) -> str:
@@ -226,33 +235,34 @@ def explain_recommendation(recommendation: Dict, extracted_skills: List[str]) ->
     Generate a human-readable explanation for why a role was recommended.
 
     Args:
-        recommendation: Single recommendation dict
-        extracted_skills: All skills from resume
+        recommendation: Single recommendation dict with match details
+        extracted_skills: All skills from resume (unused, kept for API compatibility)
 
     Returns:
-        Explanation string
+        Markdown-formatted explanation string
     """
-    role = recommendation["role"]
-    match_pct = recommendation["match_percentage"]
-    matched = recommendation["matched_skills"]
-    missing = recommendation["missing_skills"]
+    role = recommendation.get("role", "Unknown Role")
+    match_pct = recommendation.get("match_percentage", 0)
+    matched = recommendation.get("matched_skills", [])
+    missing = recommendation.get("missing_skills", [])
 
     explanation = f"**Why {role}?**\n\n"
     explanation += f"Your resume matches **{match_pct}%** of the requirements for this role.\n\n"
 
     if matched:
-        top_matched = matched[:5]
+        top_matched = matched[:TOP_MATCHED_SKILLS_EXPLANATION]
         explanation += f"✅ **Key skills you have:** {', '.join(top_matched)}\n\n"
 
     if missing:
-        top_missing = missing[:3]
+        top_missing = missing[:TOP_MISSING_SKILLS_EXPLANATION]
         explanation += f"📚 **Skills to develop:** {', '.join(top_missing)}\n\n"
 
-    if match_pct >= 80:
+    # Match quality assessment
+    if match_pct >= MATCH_SCORE_EXCELLENT:
         explanation += "🌟 **Excellent match!** You're strongly qualified for this role."
-    elif match_pct >= 60:
+    elif match_pct >= MATCH_SCORE_GOOD:
         explanation += "👍 **Good match.** With a few more skills, you'd be a strong candidate."
-    elif match_pct >= 40:
+    elif match_pct >= MATCH_SCORE_FAIR:
         explanation += "📈 **Fair match.** Focus on the missing skills to improve your candidacy."
     else:
         explanation += "🎯 **Aspirational match.** This role requires significant additional skills."
@@ -269,37 +279,50 @@ def compute_skill_gap(extracted_skills: List[str], target_role: str) -> Dict:
         target_role: Target job role name
 
     Returns:
-        Detailed skill gap analysis
+        Detailed skill gap analysis with completion score and recommendations
     """
     if target_role not in JOB_ROLES:
-        return {"error": f"Role '{target_role}' not found"}
+        error_msg = f"Role '{target_role}' not found"
+        logger.error(error_msg)
+        return {"error": error_msg}
 
-    role_data = JOB_ROLES[target_role]
-    resume_skills_lower = [s.lower() for s in extracted_skills]
+    try:
+        role_data = JOB_ROLES[target_role]
+        resume_skills_lower = normalize_skills(extracted_skills)
 
-    required = role_data["required_skills"]
-    nice_to_have = role_data.get("nice_to_have", [])
+        required = role_data.get("required_skills", [])
+        nice_to_have = role_data.get("nice_to_have", [])
 
-    matched_required = [s for s in required if s in resume_skills_lower]
-    missing_required = [s for s in required if s not in resume_skills_lower]
-    matched_optional = [s for s in nice_to_have if s in resume_skills_lower]
-    missing_optional = [s for s in nice_to_have if s not in resume_skills_lower]
+        matched_required, missing_required = match_skills(required, resume_skills_lower)
+        matched_optional, missing_optional = match_skills(nice_to_have, resume_skills_lower)
 
-    completion_score = len(matched_required) / len(required) * 100 if required else 0
+        completion_score = len(matched_required) / len(required) * 100 if required else 0
 
-    from datasets.job_descriptions import CERTIFICATIONS
-    certs = CERTIFICATIONS.get(target_role, [])
+        try:
+            from datasets.job_descriptions import CERTIFICATIONS
+            certs = CERTIFICATIONS.get(target_role, [])
+        except ImportError:
+            logger.warning("Could not import CERTIFICATIONS")
+            certs = []
 
-    return {
-        "target_role": target_role,
-        "required_skills": required,
-        "matched_required": matched_required,
-        "missing_required": missing_required,
-        "nice_to_have": nice_to_have,
-        "matched_optional": matched_optional,
-        "missing_optional": missing_optional,
-        "completion_score": round(completion_score, 1),
-        "recommended_certifications": certs,
-        "experience_required": role_data.get("experience_years", "N/A"),
-        "salary_range": role_data.get("salary_range", "N/A"),
-    }
+        result = {
+            "target_role": target_role,
+            "required_skills": required,
+            "matched_required": matched_required,
+            "missing_required": missing_required,
+            "nice_to_have": nice_to_have,
+            "matched_optional": matched_optional,
+            "missing_optional": missing_optional,
+            "completion_score": round(completion_score, 1),
+            "recommended_certifications": certs,
+            "experience_required": role_data.get("experience_years", "N/A"),
+            "salary_range": role_data.get("salary_range", "N/A"),
+        }
+        
+        logger.info(f"Skill gap analysis for {target_role}: {completion_score:.1f}% completion")
+        return result
+        
+    except Exception as e:
+        error_msg = f"Error computing skill gap for {target_role}: {e}"
+        logger.error(error_msg)
+        return {"error": error_msg}
