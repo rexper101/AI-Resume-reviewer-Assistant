@@ -204,10 +204,7 @@ def score_structure_quality(text: str, sections: Dict[str, str]) -> Tuple[float,
         logger.error(f"Error scoring structure quality: {e}")
         return 0, [f"❌ Error analyzing resume structure: {str(e)}"]
 
-    return min(100, score), feedback
-
-
-def score_experience_section(text: str, sections: Dict) -> Tuple[float, List[str]]:
+def score_experience_section(text: str, sections: Dict[str, str]) -> Tuple[float, List[str]]:
     """
     Score the quality of the experience section.
 
@@ -218,58 +215,63 @@ def score_experience_section(text: str, sections: Dict) -> Tuple[float, List[str
     Returns:
         Tuple of (score 0-100, feedback messages)
     """
-    feedback = []
-    score = 0
+    feedback: List[str] = []
+    score: float = 0
 
-    exp_text = sections.get("experience", text)
+    try:
+        exp_text = sections.get("experience", text)
 
-    # Check for date ranges using precompiled pattern
-    dates = _DATE_PATTERN_COMPILED.findall(exp_text)
+        # Check for date ranges using precompiled pattern
+        dates = config.DATE_PATTERN.findall(exp_text)
 
-    if len(dates) >= 2:
-        score += 25
-        feedback.append("✅ Clear employment timeline with dates")
-    elif len(dates) == 1:
-        score += 15
-        feedback.append("⚠️ Add dates for all positions")
-    else:
-        feedback.append("❌ Add employment dates to all positions")
+        if len(dates) >= 2:
+            score += 25
+            feedback.append("✅ Clear employment timeline with dates")
+        elif len(dates) == 1:
+            score += 15
+            feedback.append("⚠️ Add dates for all positions")
+        else:
+            feedback.append("❌ Add employment dates to all positions")
 
-    # Check for company names using precompiled pattern
-    companies = _COMPANY_PATTERN_COMPILED.findall(exp_text)
-    if len(companies) >= 2:
-        score += 20
-        feedback.append("✅ Multiple work experiences detected")
-    elif len(companies) == 1:
-        score += 10
-        feedback.append("ℹ️ One work experience found")
+        # Check for company names using precompiled pattern
+        companies = config.COMPANY_PATTERN.findall(exp_text)
+        if len(companies) >= 2:
+            score += 20
+            feedback.append("✅ Multiple work experiences detected")
+        elif len(companies) == 1:
+            score += 10
+            feedback.append("ℹ️ One work experience found")
 
-    # Check for bullet points / responsibilities
-    bullet_indicators = text.count('•') + text.count('-') + text.count('·')
-    if bullet_indicators >= 6:
-        score += 25
-        feedback.append("✅ Good use of bullet points for responsibilities")
-    elif bullet_indicators >= 3:
-        score += 15
-        feedback.append("⚠️ Add more bullet points to detail responsibilities")
-    else:
-        feedback.append("❌ Format experience as bullet points")
+        # Check for bullet points / responsibilities
+        bullet_indicators = text.count('•') + text.count('-') + text.count('·')
+        if bullet_indicators >= 6:
+            score += 25
+            feedback.append("✅ Good use of bullet points for responsibilities")
+        elif bullet_indicators >= 3:
+            score += 15
+            feedback.append("⚠️ Add more bullet points to detail responsibilities")
+        else:
+            feedback.append("❌ Format experience as bullet points")
 
-    # Check for impact/numbers
-    numbers = re.findall(r'\b\d+[\%\+]|\b\d+\s*(million|thousand|users|customers)', exp_text.lower())
-    if len(numbers) >= 3:
-        score += 30
-        feedback.append("✅ Strong quantified impact in experience")
-    elif len(numbers) >= 1:
-        score += 15
-        feedback.append("⚠️ Add more quantified impact metrics")
-    else:
-        feedback.append("❌ Include metrics (% improvements, team size, scale)")
+        # Check for impact/numbers
+        numbers = re.findall(r'\b\d+[\%\+]|\b\d+\s*(million|thousand|users|customers)', exp_text.lower())
+        if len(numbers) >= 3:
+            score += 30
+            feedback.append("✅ Strong quantified impact in experience")
+        elif len(numbers) >= 1:
+            score += 15
+            feedback.append("⚠️ Add more quantified impact metrics")
+        else:
+            feedback.append("❌ Include metrics (% improvements, team size, scale)")
 
-    return min(100, score), feedback
+        logger.debug(f"Experience section score: {score}")
+        return min(100, score), feedback
+    except Exception as e:
+        logger.error(f"Error scoring experience section: {e}")
+        return 0, [f"❌ Error analyzing experience: {str(e)}"]
 
 
-def score_education_section(text: str, sections: Dict, education_info: Dict) -> Tuple[float, List[str]]:
+def score_education_section(text: str, sections: Dict[str, str], education_info: Dict[str, Optional[str]]) -> Tuple[float, List[str]]:
     """
     Score the education section completeness.
 
@@ -281,21 +283,23 @@ def score_education_section(text: str, sections: Dict, education_info: Dict) -> 
     Returns:
         Tuple of (score 0-100, feedback messages)
     """
-    feedback = []
-    score = 0
+    feedback: List[str] = []
+    score: float = 0
 
-    if "education" not in sections or len(sections.get("education", "")) < 20:
-        feedback.append("❌ Education section missing")
-        return 0, feedback
+    try:
+        if "education" not in sections or len(sections.get("education", "")) < 20:
+            feedback.append("❌ Education section missing")
+            logger.warning("Education section not found or too short")
+            return 0, feedback
 
-    score += 30  # Base score for having education
+        score += 30  # Base score for having education
 
-    # Check for degree
-    if education_info.get("degree"):
-        score += 30
-        feedback.append(f"✅ Degree detected: {education_info['degree']}")
-    else:
-        feedback.append("⚠️ Degree type not clearly stated")
+        # Check for degree
+        if education_info and education_info.get("degree"):
+            score += 30
+            feedback.append(f"✅ Degree detected: {education_info['degree']}")
+        else:
+            feedback.append("⚠️ Degree type not clearly stated")
 
     # Check for field of study
     if education_info.get("field"):

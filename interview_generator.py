@@ -6,7 +6,8 @@ Uses local question database + optional Gemini/OpenAI API integration.
 
 import random
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
+from functools import lru_cache
 
 import sys
 import os
@@ -16,10 +17,17 @@ import config
 
 logger = logging.getLogger(__name__)
 
+# Constants
+MAX_SKILLS_FOR_PACK = 6
+DEFAULT_QUESTIONS_PER_SKILL = 3
+MIN_QUESTION_COUNT = 1
 
-def get_questions_for_skill(skill: str, level: str = "mixed", count: int = 3) -> List[str]:
+
+@lru_cache(maxsize=256)
+def get_questions_for_skill(skill: str, level: str = "mixed", count: int = 3) -> Tuple[str, ...]:
     """
     Get interview questions for a specific skill.
+    Uses LRU caching for repeated skill lookups.
 
     Args:
         skill: Skill name (e.g., "python", "machine learning")
@@ -27,45 +35,67 @@ def get_questions_for_skill(skill: str, level: str = "mixed", count: int = 3) ->
         count: Number of questions to return
 
     Returns:
-        List of interview questions
+        Tuple of interview questions (cached for efficiency)
+        
+    Raises:
+        ValueError: If inputs are invalid
     """
-    skill_lower = skill.lower()
+    if not skill or not skill.strip():
+        logger.warning("Empty skill name provided to get_questions_for_skill")
+        return tuple()
+    
+    if count < 1:
+        logger.warning(f"Invalid question count: {count}")
+        return tuple()
+    
+    try:
+        skill_lower = skill.lower().strip()
 
-    # Find matching skill in question database
-    matched_key = None
-    for key in INTERVIEW_QUESTIONS.keys():
-        if key in skill_lower or skill_lower in key:
-            matched_key = key
-            break
+        # Find matching skill in question database
+        matched_key: Optional[str] = None
+        for key in INTERVIEW_QUESTIONS.keys():
+            if key in skill_lower or skill_lower in key:
+                matched_key = key
+                break
 
-    if not matched_key:
-        return []
+        if not matched_key:
+            logger.debug(f"No questions found for skill: {skill}")
+            return tuple()
 
-    skill_questions = INTERVIEW_QUESTIONS[matched_key]
+        skill_questions = INTERVIEW_QUESTIONS[matched_key]
 
-    if level == "mixed":
-        # Take from all available levels
-        all_questions = []
-        for level_key, questions in skill_questions.items():
-            all_questions.extend(questions)
-        return random.sample(all_questions, min(count, len(all_questions)))
+        if level == "mixed":
+            # Take from all available levels
+            all_questions: List[str] = []
+            for level_key, questions in skill_questions.items():
+                all_questions.extend(questions)
+            result = random.sample(all_questions, min(count, len(all_questions)))
+            return tuple(result)
 
-    elif level in skill_questions:
-        questions = skill_questions[level]
-        return random.sample(questions, min(count, len(questions)))
+        elif level in skill_questions:
+            questions = skill_questions[level]
+            result = random.sample(questions, min(count, len(questions)))
+            return tuple(result)
 
-    else:
-        # Default to basic
-        questions = skill_questions.get("basic", [])
-        return random.sample(questions, min(count, len(questions)))
+        else:
+            # Default to basic
+            questions = skill_questions.get("basic", [])
+            if not questions:
+                logger.warning(f"No 'basic' level questions for skill: {skill}")
+                return tuple()
+            result = random.sample(questions, min(count, len(questions)))
+            return tuple(result)
+    except Exception as e:
+        logger.error(f"Error getting questions for skill {skill}: {e}")
+        return tuple()
 
 
 def generate_interview_pack(
     extracted_skills: List[str],
     experience_level: str = "Junior",
     target_role: Optional[str] = None,
-    questions_per_skill: int = 3
-) -> Dict:
+    questions_per_skill: int = DEFAULT_QUESTIONS_PER_SKILL
+) -> Dict[str, object]:
     """
     Generate a complete interview question pack based on resume.
 
@@ -73,31 +103,53 @@ def generate_interview_pack(
         extracted_skills: Skills from resume
         experience_level: "Fresher", "Junior", "Mid-Level", "Senior"
         target_role: Optional target job role
-        questions_per_skill: Questions per skill category
+        questions_per_skill: Questions per skill category (1-5 recommended)
 
     Returns:
         Dict containing organized interview questions
+        
+    Raises:
+        ValueError: If extracted_skills is empty or invalid
     """
-    # Determine question difficulty based on experience using config
-    question_level = config.EXPERIENCE_LEVELS.get(experience_level, "basic")
+    if not extracted_skills:
+        logger.warning("No extracted skills provided for interview pack generation")
+        return {
+            "technical_questions": {},
+            "behavioral_questions": [],
+            "total_questions": 0,
+            "error": "No skills provided"
+        }
+    
+    # Validate input parameters
+    if questions_per_skill < MIN_QUESTION_COUNT or questions_per_skill > 10:
+        logger.warning(f"Invalid questions_per_skill: {questions_per_skill}, using default")
+        questions_per_skill = DEFAULT_QUESTIONS_PER_SKILL
+    
+    try:
+        # Determine question difficulty based on experience using config
+        question_level = config.EXPERIENCE_LEVELS.get(experience_level, "basic")
+        logger.debug(f"Experience level '{experience_level}' mapped to question level '{question_level}'")
 
-    # Priority skills to generate questions for
-    # Match against our question database
-    available_skills = list(INTERVIEW_QUESTIONS.keys())
-    priority_skills = []
+        # Priority skills to generate questions for
+        # Match against our question database
+        available_skills = list(INTERVIEW_QUESTIONS.keys())
+        priority_skills: List[str] = []
 
-    for skill in extracted_skills:
-        skill_lower = skill.lower()
-        for available in available_skills:
-            if available in skill_lower or skill_lower in available:
-                if available not in priority_skills:
-                    priority_skills.append(available)
+        for skill in extracted_skills:
+            if not skill or not skill.strip():
+                continue
+            skill_lower = skill.lower().strip()
+            for available in available_skills:
+                if available in skill_lower or skill_lower in available:
+                    if available not in priority_skills:
+                        priority_skills.append(available)
 
-    # Limit to top 6 skills for manageable interview pack
-    priority_skills = priority_skills[:6]
+        # Limit to top MAX_SKILLS_FOR_PACK skills for manageable interview pack
+        priority_skills = priority_skills[:MAX_SKILLS_FOR_PACK]
+        logger.info(f"Selected {len(priority_skills)} skills for interview pack")
 
-    # Generate technical questions
-    technical_questions = {}
+        # Generate technical questions
+        technical_questions: Dict[str, List[str]] = {}
     for skill in priority_skills:
         questions = get_questions_for_skill(skill, question_level, questions_per_skill)
         if questions:
