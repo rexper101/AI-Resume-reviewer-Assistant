@@ -503,24 +503,104 @@ def require_analysis(page_name: str = "this section") -> bool:
 
 
 # ── Session State Initialization ───────────────────────────────────────────────
-def init_session_state():
-    defaults = {
-        "resume_text": None,
-        "parsed_resume": None,
-        "extracted_skills": None,
-        "skill_data": None,
-        "recommendations": None,
-        "ats_result": None,
-        "prediction_result": None,
-        "interview_pack": None,
-        "skill_gap": None,
-        "current_page": "Home",
-        "demo_mode": False,
-        "analysis_done": False,
-    }
-    for key, val in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = val
+def init_session_state() -> None:
+    """
+    Initialize session state with default values.
+    Called once per session to ensure all required state keys exist.
+    """
+    try:
+        for key, val in SESSION_DEFAULTS.items():
+            if key not in st.session_state:
+                st.session_state[key] = val
+        logger.debug("Session state initialized successfully")
+    except Exception as e:
+        logger.error(f"Error initializing session state: {e}")
+        st.error("Failed to initialize application. Please refresh the page.")
+
+
+def clear_analysis_state() -> None:
+    """
+    Clear analysis-related session state to allow new resume upload.
+    Preserves UI state like current_page and demo_mode.
+    """
+    analysis_keys = [
+        "resume_text",
+        "parsed_resume", 
+        "extracted_skills",
+        "skill_data",
+        "recommendations",
+        "ats_result",
+        "prediction_result",
+        "interview_pack",
+        "skill_gap",
+        "error_message"
+    ]
+    try:
+        for key in analysis_keys:
+            if key in st.session_state:
+                st.session_state[key] = None
+        st.session_state.analysis_done = False
+        st.session_state.last_update_time = None
+        logger.debug("Analysis state cleared")
+    except Exception as e:
+        logger.error(f"Error clearing analysis state: {e}")
+
+
+def set_session_error(error_msg: str, duration_seconds: int = 5) -> None:
+    """
+    Set an error message in session state with optional auto-clear.
+    
+    Args:
+        error_msg: Error message to display
+        duration_seconds: Auto-clear after this many seconds (0 = no auto-clear)
+    """
+    try:
+        st.session_state.error_message = error_msg
+        st.session_state.last_update_time = time.time() if duration_seconds > 0 else None
+        logger.warning(f"Session error set: {error_msg}")
+    except Exception as e:
+        logger.error(f"Error setting session error: {e}")
+
+
+def safe_execution(func, *args, error_msg: str = "An error occurred", retry_count: int = 1, **kwargs) -> Optional[Any]:
+    """
+    Safely execute a function with error handling and optional retries.
+    
+    Args:
+        func: Function to execute
+        *args: Positional arguments for func
+        error_msg: Custom error message on failure
+        retry_count: Number of times to retry on failure (1 = no retries)
+        **kwargs: Keyword arguments for func
+        
+    Returns:
+        Result from func or None if execution fails after retries
+    """
+    for attempt in range(max(1, retry_count)):
+        try:
+            result = func(*args, **kwargs)
+            return result
+        except Exception as e:
+            logger.error(f"Execution attempt {attempt + 1} failed: {e}")
+            if attempt == retry_count - 1:  # Last attempt
+                set_session_error(f"{error_msg}: {str(e)}")
+                return None
+            time.sleep(0.5)  # Brief delay before retry
+
+
+def render_error_boundary(component_name: str = "Component") -> None:
+    """
+    Display error message if one exists in session state.
+    
+    Args:
+        component_name: Name of component for error logging
+    """
+    if st.session_state.get("error_message"):
+        with st.container():
+            st.error(f"⚠️ {st.session_state.error_message}")
+            if st.button("Dismiss", key=f"error_dismiss_{component_name}"):
+                st.session_state.error_message = None
+                st.rerun()
 
 
 init_session_state()
