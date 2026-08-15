@@ -59,19 +59,19 @@ CONTACT_PATTERNS: Dict[str, Pattern] = {
     for key, pattern in _CONTACT_PATTERNS_RAW.items()
 }
 
-# ── Text Cleaning Patterns ──────────────────────────────────────────────────────
-WHITESPACE_PATTERN = re.compile(r'\n{3,}')
-MULTI_SPACE_PATTERN = re.compile(r' {2,}')
-NON_PRINTABLE_PATTERN = re.compile(r'[^\x20-\x7E\n]')
-CAMELCASE_PATTERN = re.compile(r'([a-z])([A-Z])')
+# ── Text Cleaning Patterns (Precompiled) ───────────────────────────────────────
+WHITESPACE_PATTERN: Pattern = re.compile(r'\n{3,}')
+MULTI_SPACE_PATTERN: Pattern = re.compile(r' {2,}')
+NON_PRINTABLE_PATTERN: Pattern = re.compile(r'[^\x20-\x7E\n]')
+CAMELCASE_PATTERN: Pattern = re.compile(r'([a-z])([A-Z])')
 
 # ── Text Normalization Patterns ─────────────────────────────────────────────────
-ALIAS_REPLACE_PATTERN = re.compile(r'[/\\|]')
-BRACKET_PATTERN = re.compile(r'[\(\)\[\]\{\}]')
-WHITESPACE_NORM_PATTERN = re.compile(r'\s+')
+ALIAS_REPLACE_PATTERN: Pattern = re.compile(r'[/\\|]')
+BRACKET_PATTERN: Pattern = re.compile(r'[\(\)\[\]\{\}]')
+WHITESPACE_NORM_PATTERN: Pattern = re.compile(r'\s+')
 
 # ── ATS Scoring Weights ─────────────────────────────────────────────────────────
-SCORING_WEIGHTS = {
+SCORING_WEIGHTS: Dict[str, int] = {
     "keyword_optimization": 25,
     "skills_relevance": 20,
     "structure_quality": 20,
@@ -81,29 +81,32 @@ SCORING_WEIGHTS = {
     "additional_sections": 5,
 }
 
+# Validate scoring weights sum to 100
+assert sum(SCORING_WEIGHTS.values()) == 100, "Scoring weights must sum to 100"
+
 # ── ATS Keywords ────────────────────────────────────────────────────────────────
-ATS_KEYWORDS = [
+ATS_KEYWORDS: List[str] = [
     "experience", "skills", "education", "projects", "achievements",
     "responsibilities", "accomplished", "developed", "implemented",
     "managed", "led", "created", "designed", "optimized", "improved",
     "collaborated", "delivered", "built", "deployed"
 ]
 
-ACTION_VERBS = [
+ACTION_VERBS: List[str] = [
     "built", "developed", "designed", "implemented", "optimized",
     "improved", "increased", "reduced", "led", "managed", "created",
     "deployed", "architected", "delivered", "automated", "accelerated"
 ]
 
 # ── Feature Extraction ──────────────────────────────────────────────────────────
-QUANTIFIED_PATTERN = re.compile(r'\d+[\%\+xX]|\d+\s*(million|billion|thousand|k\b)')
-DATE_PATTERN = re.compile(r'(20\d{2})\s*[-–]\s*(20\d{2}|present|current)', re.IGNORECASE)
-COMPANY_PATTERN = re.compile(
+QUANTIFIED_PATTERN: Pattern = re.compile(r'\d+[\%\+xX]|\d+\s*(million|billion|thousand|k\b)')
+DATE_PATTERN: Pattern = re.compile(r'(20\d{2})\s*[-–]\s*(20\d{2}|present|current)', re.IGNORECASE)
+COMPANY_PATTERN: Pattern = re.compile(
     r'[A-Z][a-z]+(?:\s[A-Z][a-z]+)*(?:\s(?:Inc|LLC|Ltd|Corp|Co|Technologies|Solutions|Group)\.?)?'
 )
 
 # ── Interview Generation ────────────────────────────────────────────────────────
-EXPERIENCE_LEVELS = {
+EXPERIENCE_LEVELS: Dict[str, str] = {
     "Fresher/Student": "basic",
     "Entry Level": "basic",
     "Junior": "basic",
@@ -113,22 +116,24 @@ EXPERIENCE_LEVELS = {
 }
 
 # ── PDF Processing ─────────────────────────────────────────────────────────────
-PDF_LIBRARIES = ["pdfplumber", "PyPDF2", "pypdf"]
-WORDS_PER_PAGE = 400  # Estimated for resumes
+PDF_LIBRARIES: List[str] = ["pdfplumber", "PyPDF2", "pypdf"]
+WORDS_PER_PAGE: int = 400  # Estimated for resumes
+MAX_PDF_PAGES: int = 20  # Maximum pages to parse
+MAX_TEXT_LENGTH: int = 50000  # Maximum characters to process
 
 # ── Logging Configuration ───────────────────────────────────────────────────────
-LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-LOG_LEVEL = "INFO"
+LOG_FORMAT: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+LOG_LEVEL: str = "INFO"
 
 # ── Model Configuration ─────────────────────────────────────────────────────────
-TFIDF_CONFIG = {
+TFIDF_CONFIG: Dict[str, object] = {
     "stop_words": "english",
     "ngram_range": (1, 2),
     "max_features": 5000,
     "min_df": 1
 }
 
-ROLE_PREDICTOR_CONFIG = {
+ROLE_PREDICTOR_CONFIG: Dict[str, object] = {
     "tfidf_ngram": (1, 2),
     "tfidf_max_features": 3000,
     "logistic_regression": {
