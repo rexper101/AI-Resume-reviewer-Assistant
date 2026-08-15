@@ -4,17 +4,27 @@ Evaluates resume compatibility with ATS systems based on multiple factors.
 """
 
 import re
-from typing import Dict, List, Tuple
+import logging
+from typing import Dict, List, Tuple, Optional
+
 import sys
 import os
 sys.path.insert(0, os.path.dirname(__file__))
 import config
 
+logger = logging.getLogger(__name__)
 
-# Precompile patterns for efficiency
-_QUANTIFIED_PATTERN_COMPILED = config.QUANTIFIED_PATTERN
-_DATE_PATTERN_COMPILED = config.DATE_PATTERN
-_COMPANY_PATTERN_COMPILED = config.COMPANY_PATTERN
+# Constants for scoring
+MIN_QUANTIFIED = 5
+MIN_QUANTIFIED_MEDIUM = 2
+MIN_ACTION_VERBS = 8
+MIN_SKILL_COUNT = 20
+MEDIUM_SKILL_COUNT = 15
+FAIR_SKILL_COUNT = 10
+MIN_SKILL_CATEGORIES = 4
+OPTIMAL_WORD_COUNT = 750
+MIN_WORD_COUNT = 200
+MAX_WORD_COUNT = 1500
 
 
 def score_keyword_optimization(text: str, extracted_skills: List[str]) -> Tuple[float, List[str]]:
@@ -27,39 +37,52 @@ def score_keyword_optimization(text: str, extracted_skills: List[str]) -> Tuple[
 
     Returns:
         Tuple of (score 0-100, feedback messages)
+        
+    Raises:
+        ValueError: If input is empty
     """
-    feedback = []
-    score = 0
+    if not text or not extracted_skills:
+        logger.warning("Cannot score keyword optimization with empty inputs")
+        return 0, ["❌ No text or skills provided for keyword optimization"]
+    
+    feedback: List[str] = []
+    score: float = 0
 
-    text_lower = text.lower()
+    try:
+        text_lower = text.lower()
 
-    # Check for important ATS keywords from config
-    found_keywords = [k for k in config.ATS_KEYWORDS if k in text_lower]
-    keyword_ratio = len(found_keywords) / len(config.ATS_KEYWORDS)
-    score += keyword_ratio * 40
+        # Check for important ATS keywords from config
+        found_keywords = [k for k in config.ATS_KEYWORDS if k in text_lower]
+        keyword_ratio = len(found_keywords) / len(config.ATS_KEYWORDS) if config.ATS_KEYWORDS else 0
+        score += keyword_ratio * 40
+        logger.debug(f"Keyword ratio: {keyword_ratio:.2%}")
 
-    # Action verbs score from config
-    found_verbs = [v for v in config.ACTION_VERBS if v in text_lower]
-    verb_ratio = min(1.0, len(found_verbs) / 8)
-    score += verb_ratio * 30
+        # Action verbs score from config
+        found_verbs = [v for v in config.ACTION_VERBS if v in text_lower]
+        verb_ratio = min(1.0, len(found_verbs) / 8)
+        score += verb_ratio * 30
+        logger.debug(f"Verb ratio: {verb_ratio:.2%}")
 
-    # Quantified achievements (numbers/percentages) using precompiled pattern
-    quantified = _QUANTIFIED_PATTERN_COMPILED.findall(text_lower)
-    if len(quantified) >= 5:
-        score += 30
-        feedback.append("✅ Good use of quantified achievements")
-    elif len(quantified) >= 2:
-        score += 15
-        feedback.append("⚠️ Add more quantified results (%, numbers, impact)")
-    else:
-        feedback.append("❌ Missing quantified achievements - add metrics to your experience")
+        # Quantified achievements (numbers/percentages) using precompiled pattern
+        quantified = config.QUANTIFIED_PATTERN.findall(text_lower)
+        if len(quantified) >= MIN_QUANTIFIED:
+            score += 30
+            feedback.append("✅ Good use of quantified achievements")
+        elif len(quantified) >= MIN_QUANTIFIED_MEDIUM:
+            score += 15
+            feedback.append("⚠️ Add more quantified results (%, numbers, impact)")
+        else:
+            feedback.append("❌ Missing quantified achievements - add metrics to your experience")
 
-    if len(found_verbs) >= 8:
-        feedback.append("✅ Strong action verbs used effectively")
-    else:
-        feedback.append("⚠️ Use more action verbs (built, developed, optimized, etc.)")
+        if len(found_verbs) >= MIN_ACTION_VERBS:
+            feedback.append("✅ Strong action verbs used effectively")
+        else:
+            feedback.append("⚠️ Use more action verbs (built, developed, optimized, etc.)")
 
-    return min(100, score), feedback
+        return min(100, score), feedback
+    except Exception as e:
+        logger.error(f"Error scoring keyword optimization: {e}")
+        return 0, [f"❌ Error analyzing keywords: {str(e)}"]
 
 
 def score_skills_relevance(extracted_skills: List[str]) -> Tuple[float, List[str]]:
@@ -72,45 +95,54 @@ def score_skills_relevance(extracted_skills: List[str]) -> Tuple[float, List[str
     Returns:
         Tuple of (score 0-100, feedback messages)
     """
-    feedback = []
-    score = 0
+    feedback: List[str] = []
+    score: float = 0
 
-    skill_count = len(extracted_skills)
+    if not extracted_skills:
+        logger.warning("No skills provided for relevance scoring")
+        return 0, ["❌ No skills detected - add a dedicated skills section"]
 
-    # Score based on skill count
-    if skill_count >= 20:
-        score = 90
-        feedback.append("✅ Comprehensive skill set detected")
-    elif skill_count >= 15:
-        score = 75
-        feedback.append("✅ Good number of technical skills")
-    elif skill_count >= 10:
-        score = 60
-        feedback.append("⚠️ Consider adding more technical skills")
-    elif skill_count >= 5:
-        score = 40
-        feedback.append("❌ Limited skills detected - expand your skills section")
-    else:
-        score = 20
-        feedback.append("❌ Very few skills found - ensure skills are clearly listed")
+    try:
+        skill_count = len(extracted_skills)
 
-    # Bonus for variety across categories
-    from datasets.job_descriptions import SKILLS_TAXONOMY
-    categories_covered = 0
-    for category, category_skills in SKILLS_TAXONOMY.items():
-        if any(skill in extracted_skills for skill in category_skills):
-            categories_covered += 1
+        # Score based on skill count
+        if skill_count >= MIN_SKILL_COUNT:
+            score = 90
+            feedback.append("✅ Comprehensive skill set detected")
+        elif skill_count >= MEDIUM_SKILL_COUNT:
+            score = 75
+            feedback.append("✅ Good number of technical skills")
+        elif skill_count >= FAIR_SKILL_COUNT:
+            score = 60
+            feedback.append("⚠️ Consider adding more technical skills")
+        elif skill_count >= 5:
+            score = 40
+            feedback.append("❌ Limited skills detected - expand your skills section")
+        else:
+            score = 20
+            feedback.append("❌ Very few skills found - ensure skills are clearly listed")
 
-    if categories_covered >= 4:
-        score = min(100, score + 10)
-        feedback.append("✅ Good diversity across skill categories")
-    elif categories_covered <= 1:
-        feedback.append("⚠️ Diversify your skill set across more categories")
+        # Bonus for variety across categories
+        from datasets.job_descriptions import SKILLS_TAXONOMY
+        categories_covered = 0
+        for category, category_skills in SKILLS_TAXONOMY.items():
+            if any(skill in extracted_skills for skill in category_skills):
+                categories_covered += 1
 
-    return score, feedback
+        if categories_covered >= MIN_SKILL_CATEGORIES:
+            score = min(100, score + 10)
+            feedback.append("✅ Good diversity across skill categories")
+        elif categories_covered <= 1:
+            feedback.append("⚠️ Diversify your skill set across more categories")
+
+        logger.debug(f"Skills relevance: {len(extracted_skills)} skills in {categories_covered} categories")
+        return score, feedback
+    except Exception as e:
+        logger.error(f"Error scoring skills relevance: {e}")
+        return score, feedback + [f"⚠️ Error analyzing skill diversity: {str(e)}"]
 
 
-def score_structure_quality(text: str, sections: Dict) -> Tuple[float, List[str]]:
+def score_structure_quality(text: str, sections: Dict[str, str]) -> Tuple[float, List[str]]:
     """
     Score the structural quality of the resume.
 
@@ -120,34 +152,51 @@ def score_structure_quality(text: str, sections: Dict) -> Tuple[float, List[str]
 
     Returns:
         Tuple of (score 0-100, feedback messages)
+        
+    Raises:
+        ValueError: If inputs are invalid
     """
-    feedback = []
-    score = 0
+    if not text or not sections:
+        logger.warning("Cannot score structure quality with empty inputs")
+        return 0, ["❌ Invalid resume text or sections"]
+    
+    feedback: List[str] = []
+    score: float = 0
 
-    # Check for essential sections
-    essential_sections = {
-        "summary": ("Professional summary", 15),
-        "experience": ("Work experience", 25),
-        "education": ("Education section", 20),
-        "skills": ("Skills section", 20),
-    }
+    try:
+        # Check for essential sections
+        essential_sections: Dict[str, Tuple[str, float]] = {
+            "summary": ("Professional summary", 15),
+            "experience": ("Work experience", 25),
+            "education": ("Education section", 20),
+            "skills": ("Skills section", 20),
+        }
 
-    for section_key, (section_name, points) in essential_sections.items():
-        if section_key in sections and len(sections[section_key]) > 30:
-            score += points
-            feedback.append(f"✅ {section_name} present")
+        for section_key, (section_name, points) in essential_sections.items():
+            section_content = sections.get(section_key, "")
+            if section_content and len(section_content) > 30:
+                score += points
+                feedback.append(f"✅ {section_name} present")
+                logger.debug(f"Section {section_key} found with {len(section_content)} chars")
+            else:
+                feedback.append(f"❌ {section_name} missing or too short")
+
+        # Check for projects section
+        if "projects" in sections and len(sections.get("projects", "")) > 30:
+            score += 10
+            feedback.append("✅ Projects section adds value")
         else:
-            feedback.append(f"❌ {section_name} missing or too short")
+            feedback.append("⚠️ Consider adding a Projects section")
 
-    # Check for projects section
-    if "projects" in sections and len(sections.get("projects", "")) > 30:
-        score += 10
-        feedback.append("✅ Projects section adds value")
-    else:
-        feedback.append("⚠️ Consider adding a Projects section")
-
-    # Check text length (500-1000 words for single page)
-    word_count = len(text.split())
+        # Check text length (optimal 500-1000 words for single page)
+        word_count = len(text.split())
+        if MIN_WORD_COUNT <= word_count <= MAX_WORD_COUNT:
+            score += 10
+            feedback.append(f"✅ Optimal length ({word_count} words)")
+        elif word_count < MIN_WORD_COUNT:
+            feedback.append(f"❌ Resume too short ({word_count} words) - expand to at least {MIN_WORD_COUNT}")
+        else:
+            feedback.append(f"⚠️ Resume quite long ({word_count} words) - consider condensing to {MAX_WORD_COUNT} max")
     if 400 <= word_count <= 1200:
         score += 10
         feedback.append(f"✅ Good resume length ({word_count} words)")
