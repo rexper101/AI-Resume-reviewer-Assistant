@@ -448,3 +448,14 @@ def extract_all(text: str, sections: dict) -> dict:
     primary_skills = section_skills.get("skills", [])
     secondary_skills = [s for s in all_skills if s not in primary_skills]
 
+    return {
+        "all_skills": all_skills,
+        "primary_skills": primary_skills,
+        "secondary_skills": secondary_skills,
+        "categorized_skills": categorized,
+        "skill_frequency": frequency,
+        "section_skills": section_skills,
+        "experience_info": experience_info,
+        "education_info": education_info,
+        "total_skills_count": len(all_skills)
+    }
