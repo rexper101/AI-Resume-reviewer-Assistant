@@ -95,5 +95,13 @@ subs = [
     ("#A78BFA", "#5EEAD4"),
 ]
 
+for a, b in subs:
+    t = t.replace(a, b)
+
+t = t.replace(
+    h('f"<MOTIONDIV style=\'color:#94A3B8;padding:6px 0;\'>"'),
+    h('f"<MOTIONDIV class=\'feature-row\'>"'),
+)
+
 p.write_text(t, encoding="utf-8")
 print("done")
