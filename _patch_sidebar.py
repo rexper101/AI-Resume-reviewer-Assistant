@@ -79,6 +79,3 @@ new_sidebar = f'''def render_sidebar():
         """, unsafe_allow_html=True)
 
 '''
-
-p.write_text(text[:start] + new_sidebar + text[end:], encoding="utf-8")
-print("done")
